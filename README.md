@@ -1,4 +1,6 @@
-﻿# Google Meet MCP Server
+# Google Meet MCP Server
+
+[![smithery badge](https://smithery.ai/badge/@cool-man-vk/google-meet-mcp-server)](https://smithery.ai/server/@cool-man-vk/google-meet-mcp-server)
 
 A Model Context Protocol (MCP) server for interacting with Google Meet through the Google Calendar API. This server provides tools for creating and managing Google Meet meetings programmatically.
 
@@ -8,6 +10,15 @@ This project implements an MCP server that allows AI agents to interact with Goo
 
 ## Installation
 
+### Installing via Smithery
+
+To install Google Meet MCP Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@cool-man-vk/google-meet-mcp-server):
+
+```bash
+npx -y @smithery/cli install @cool-man-vk/google-meet-mcp-server --client claude
+```
+
+### Manual Installation
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/google-meet-mcp.git
