@@ -1,4 +1,5 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+# Google Meet MCP Server - Create and manage Google Meet meetings with recording support
 
 startCommand:
   type: stdio
@@ -12,11 +13,11 @@ startCommand:
       googleMeetCredentialsPath:
         type: string
         default: credentials.json
-        description: Path to Google Meet credentials file.
+        description: Path to Google OAuth 2.0 credentials file (download from Google Cloud Console).
       googleMeetTokenPath:
         type: string
         default: token.json
-        description: Path to Google Meet token file.
+        description: Path to store/read the authentication token (generated after running setup).
   commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
@@ -31,3 +32,42 @@ startCommand:
   exampleConfig:
     googleMeetCredentialsPath: credentials.json
     googleMeetTokenPath: token.json
+
+# Metadata for Smithery registry
+name: google-meet-mcp-server
+description: MCP server for creating and managing Google Meet meetings with recording capabilities
+version: 1.0.0
+author: INSIDE-HAIR
+repository: https://github.com/INSIDE-HAIR/mcp-google-meet
+license: ISC
+keywords:
+  - google-meet
+  - calendar
+  - meeting
+  - recording
+  - mcp
+  - model-context-protocol
+  - google-workspace
+  - video-conferencing
+
+# Available tools
+tools:
+  - name: list_meetings
+    description: List upcoming Google Meet meetings
+  - name: get_meeting
+    description: Get details of a specific meeting
+  - name: create_meeting
+    description: Create a new meeting with optional recording
+  - name: update_meeting
+    description: Update an existing meeting
+  - name: delete_meeting
+    description: Delete a meeting
+  - name: get_meeting_recordings
+    description: Get recording information (requires Google Workspace)
+
+# Requirements
+requirements:
+  - Google Cloud project with Calendar API and Meet API enabled
+  - OAuth 2.0 credentials (Desktop application type)
+  - Node.js 16 or higher
+  - For recording features - Google Workspace Business Standard or higher
