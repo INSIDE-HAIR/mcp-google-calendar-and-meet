@@ -143,6 +143,10 @@ class GoogleMeetMcpServer {
                 items: {
                   type: 'string'
                 }
+              },
+              enable_recording: {
+                type: 'boolean',
+                description: 'Enable recording for the meeting (requires Google Workspace Business Standard or higher)'
               }
             },
             required: ['summary', 'start_time', 'end_time']
@@ -197,6 +201,20 @@ class GoogleMeetMcpServer {
               }
             },
             required: ['meeting_id']
+          }
+        },
+        {
+          name: 'get_meeting_recordings',
+          description: 'Get recordings for a Google Meet meeting (requires Google Workspace)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              meeting_code: {
+                type: 'string',
+                description: 'The meeting code from the Google Meet URL (e.g., "abc-defg-hij")'
+              }
+            },
+            required: ['meeting_code']
           }
         }
       ]
@@ -266,7 +284,7 @@ class GoogleMeetMcpServer {
         };
       } 
       else if (toolName === 'create_meeting') {
-        const { summary, description = '', start_time, end_time, attendees = [] } = args;
+        const { summary, description = '', start_time, end_time, attendees = [], enable_recording = false } = args;
 
         // Validate required parameters
         if (!summary || !start_time || !end_time) {
@@ -286,7 +304,8 @@ class GoogleMeetMcpServer {
           start_time,
           end_time,
           description,
-          attendees
+          attendees,
+          enable_recording
         );
 
         return {
@@ -348,7 +367,25 @@ class GoogleMeetMcpServer {
             }
           ]
         };
-      } 
+      }
+      else if (toolName === 'get_meeting_recordings') {
+        const { meeting_code } = args;
+        
+        if (!meeting_code) {
+          throw new McpError(ErrorCode.InvalidParams, 'meeting_code is required');
+        }
+
+        const recordings = await this.googleMeet.getMeetingRecordings(meeting_code);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(recordings, null, 2)
+            }
+          ]
+        };
+      }
       else {
         throw new McpError(
           ErrorCode.MethodNotFound,

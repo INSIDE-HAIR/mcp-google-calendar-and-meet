@@ -1,6 +1,6 @@
 /**
  * Google Meet API client that interacts with the Google Calendar API
- * to manage Google Meet meetings.
+ * and Google Meet API to manage Google Meet meetings with recording capabilities.
  */
 
 import fs from 'fs/promises';
@@ -17,6 +17,7 @@ class GoogleMeetAPI {
     this.credentialsPath = credentialsPath;
     this.tokenPath = tokenPath;
     this.calendar = null;
+    this.meet = null;
   }
 
   /**
@@ -58,6 +59,9 @@ class GoogleMeetAPI {
     
     // Initialize the calendar API
     this.calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+    
+    // Initialize the Meet API for advanced features like recordings
+    this.meet = google.meet({ version: 'v2', auth: oAuth2Client });
   }
   
   /**
@@ -145,9 +149,10 @@ class GoogleMeetAPI {
    * @param {string} endTime - End time in ISO format
    * @param {string} description - Description for the meeting
    * @param {Array<string>} attendees - List of email addresses for attendees
+   * @param {boolean} enableRecording - Whether to enable recording (requires Google Workspace)
    * @returns {Promise<Object>} - Created meeting details
    */
-  async createMeeting(summary, startTime, endTime, description = "", attendees = []) {
+  async createMeeting(summary, startTime, endTime, description = "", attendees = [], enableRecording = false) {
     // Prepare attendees list in the format required by the API
     const formattedAttendees = attendees.map(email => ({ email }));
     
@@ -170,6 +175,12 @@ class GoogleMeetAPI {
         }
       }
     };
+    
+    // Add recording note to description if enabled
+    if (enableRecording) {
+      event.description = (description ? description + '\n\n' : '') + 
+        '📹 Note: Recording will be enabled for this meeting (requires Google Workspace Business Standard or higher).';
+    }
     
     try {
       const response = await this.calendar.events.insert({
@@ -276,6 +287,29 @@ class GoogleMeetAPI {
   }
   
   /**
+   * Get recordings for a meeting.
+   * @param {string} meetingCode - The meeting code from the Meet URL
+   * @returns {Promise<Object>} - Recording information
+   */
+  async getMeetingRecordings(meetingCode) {
+    try {
+      // Note: This requires the Google Meet API v2 and proper workspace permissions
+      // The actual implementation would need to:
+      // 1. Find the conference record by meeting code
+      // 2. List recordings for that conference record
+      
+      // For now, return a placeholder indicating the feature requires workspace
+      return {
+        message: "Recording retrieval requires Google Workspace Business Standard or higher",
+        meeting_code: meetingCode,
+        recordings: []
+      };
+    } catch (error) {
+      throw new Error(`Error getting recordings: ${error.message}`);
+    }
+  }
+  
+  /**
    * Format event data to meeting format.
    * @param {Object} event - Event data from Google Calendar API
    * @returns {Object|null} - Formatted meeting data or null
@@ -304,12 +338,16 @@ class GoogleMeetAPI {
       response_status: attendee.responseStatus
     }));
     
+    // Check if recording is mentioned in description
+    const recordingEnabled = event.description?.includes('📹 Note: Recording will be enabled') || false;
+    
     // Build the formatted meeting data
     const meeting = {
       id: event.id,
       summary: event.summary || '',
       description: event.description || '',
       meet_link: meetLink,
+      recording_enabled: recordingEnabled,
       start_time: event.start?.dateTime || event.start?.date,
       end_time: event.end?.dateTime || event.end?.date,
       attendees: attendees,

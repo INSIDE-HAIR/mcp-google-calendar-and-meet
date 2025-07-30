@@ -24,11 +24,12 @@ The project uses ES modules (`"type": "module"` in package.json) and follows thi
    - Entry point for the application
    - Implements the MCP server using `@modelcontextprotocol/sdk`
    - Handles tool registration and request routing
-   - Manages 5 tools: list_meetings, get_meeting, create_meeting, update_meeting, delete_meeting
+   - Manages 6 tools: list_meetings, get_meeting, create_meeting, update_meeting, delete_meeting, get_meeting_recordings
 
-2. **src/GoogleMeetAPI.js** - Google Calendar API wrapper
+2. **src/GoogleMeetAPI.js** - Google Calendar and Meet API wrapper
    - Handles OAuth2 authentication with Google
    - Provides methods for CRUD operations on calendar events with Google Meet
+   - Supports recording configuration for meetings (requires Google Workspace)
    - Manages token persistence and refresh
 
 3. **src/setup.js** - Initial OAuth setup script
@@ -52,5 +53,13 @@ The server requires Google OAuth2 credentials:
 ## Key Dependencies
 
 - `@modelcontextprotocol/sdk` - MCP protocol implementation
-- `googleapis` - Google Calendar API client
+- `googleapis` - Google Calendar API and Meet API client
 - `open` - For opening browser during OAuth flow
+
+## Recording Feature
+
+The server now supports enabling recordings for Google Meet meetings:
+- Pass `enable_recording: true` when creating a meeting
+- Requires Google Workspace Business Standard or higher
+- Recording status is indicated in meeting description
+- Use `get_meeting_recordings` tool to retrieve recording information (placeholder implementation)

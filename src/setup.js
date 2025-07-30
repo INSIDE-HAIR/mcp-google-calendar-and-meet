@@ -13,8 +13,11 @@ import open from 'open';
 import path from 'path';
 import readline from 'readline';
 
-// Scopes required for Google Meet functionality via Calendar API
-const SCOPES = ['https://www.googleapis.com/auth/calendar'];
+// Scopes required for Google Meet functionality via Calendar API and Meet API
+const SCOPES = [
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/meetings.space.created'
+];
 
 // Create readline interface for user input
 const rl = readline.createInterface({
