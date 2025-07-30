@@ -17,7 +17,6 @@ class GoogleMeetAPI {
     this.credentialsPath = credentialsPath;
     this.tokenPath = tokenPath;
     this.calendar = null;
-    this.meet = null;
   }
 
   /**
@@ -60,8 +59,9 @@ class GoogleMeetAPI {
     // Initialize the calendar API
     this.calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
     
-    // Initialize the Meet API for advanced features like recordings
-    this.meet = google.meet({ version: 'v2', auth: oAuth2Client });
+    // Note: Meet API v2 would be initialized here for advanced recording features
+    // Currently, recording configuration is handled through calendar event descriptions
+    // this.meet = google.meet({ version: 'v2', auth: oAuth2Client }); // Future implementation
   }
   
   /**

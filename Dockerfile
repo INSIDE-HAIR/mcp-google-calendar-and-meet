@@ -5,8 +5,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json ./
-# If a package-lock.json exists, uncomment the next line
-# COPY package-lock.json ./
+COPY package-lock.json ./
 RUN npm install --ignore-scripts
 
 # Copy project files
