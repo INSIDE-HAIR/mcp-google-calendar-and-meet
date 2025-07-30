@@ -6,6 +6,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { google } from 'googleapis';
+import open from 'open';
+import http from 'http';
+import { URL } from 'url';
 
 class GoogleMeetAPI {
   /**
@@ -51,9 +54,17 @@ class GoogleMeetAPI {
         oAuth2Client.setCredentials(credentials);
       }
     } catch (error) {
-      throw new Error(
-        `No valid token found at ${this.tokenPath}. Please run: GOOGLE_OAUTH_CREDENTIALS="${this.credentialsPath}" npm run setup`
-      );
+      // Token doesn't exist or is invalid, try to create it automatically
+      console.error(`No valid token found at ${this.tokenPath}`);
+      console.error(`Attempting automatic authentication...`);
+      
+      try {
+        await this.performAutoAuth(oAuth2Client);
+      } catch (authError) {
+        throw new Error(
+          `Authentication failed. Please run setup manually: GOOGLE_OAUTH_CREDENTIALS="${this.credentialsPath}" npm run setup`
+        );
+      }
     }
     
     // Initialize the calendar API
@@ -286,6 +297,113 @@ class GoogleMeetAPI {
     }
   }
   
+  /**
+   * Perform automatic OAuth authentication flow
+   * @param {Object} oAuth2Client - The OAuth2 client
+   */
+  async performAutoAuth(oAuth2Client) {
+    const SCOPES = [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/meetings.space.created'
+    ];
+
+    console.error('\n🔐 Google Authentication Required');
+    console.error('📝 To use Google Meet MCP Server, you need to authenticate with Google.');
+
+    return new Promise((resolve, reject) => {
+      // Create a temporary HTTP server to handle the OAuth callback
+      const server = http.createServer((req, res) => {
+        const url = new URL(req.url, 'http://localhost:3000');
+        
+        if (url.pathname === '/oauth2callback') {
+          const code = url.searchParams.get('code');
+          const error = url.searchParams.get('error');
+
+          if (error) {
+            res.writeHead(400, { 'Content-Type': 'text/html' });
+            res.end(`
+              <html>
+                <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                  <h1>❌ Authentication Failed</h1>
+                  <p>Error: ${error}</p>
+                  <p>You can close this window.</p>
+                </body>
+              </html>
+            `);
+            server.close();
+            reject(new Error(`Authentication failed: ${error}`));
+            return;
+          }
+
+          if (code) {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(`
+              <html>
+                <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                  <h1>✅ Authentication Successful!</h1>
+                  <p>You can now close this window and return to Claude.</p>
+                  <p>Google Meet MCP Server is now configured.</p>
+                </body>
+              </html>
+            `);
+            
+            // Exchange code for tokens
+            oAuth2Client.getToken(code)
+              .then(({ tokens }) => {
+                return fs.writeFile(this.tokenPath, JSON.stringify(tokens, null, 2))
+                  .then(() => tokens);
+              })
+              .then((tokens) => {
+                oAuth2Client.setCredentials(tokens);
+                console.error('✅ Authentication successful! Token saved.');
+                server.close();
+                resolve();
+              })
+              .catch(err => {
+                console.error('❌ Error saving token:', err);
+                server.close();
+                reject(err);
+              });
+          }
+        } else {
+          res.writeHead(404);
+          res.end('Not found');
+        }
+      });
+
+      server.listen(3000, () => {
+        const authUrl = oAuth2Client.generateAuthUrl({
+          access_type: 'offline',
+          scope: SCOPES,
+          prompt: 'consent',
+          redirect_uri: 'http://localhost:3000/oauth2callback'
+        });
+
+        console.error('🌐 Opening browser for authentication...');
+        console.error(`🔗 If browser doesn't open, visit: ${authUrl}`);
+
+        // Try to open browser
+        open(authUrl).catch(() => {
+          console.error('❌ Could not open browser automatically');
+          console.error(`📋 Please manually visit: ${authUrl}`);
+        });
+
+        // Timeout after 5 minutes
+        setTimeout(() => {
+          server.close();
+          reject(new Error('Authentication timeout. Please try again.'));
+        }, 300000);
+      });
+
+      server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.error('❌ Port 3000 is in use. Please try again or run setup script manually.');
+        }
+        reject(err);
+      });
+    });
+  }
+
   /**
    * Get recordings for a meeting.
    * @param {string} meetingCode - The meeting code from the Meet URL

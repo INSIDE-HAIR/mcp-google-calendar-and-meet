@@ -53,6 +53,18 @@ Before using the Google Meet MCP server, you need to set up your Google API cred
 
 This will open a browser window where you can authorize the application to access your Google Calendar and Meet APIs.
 
+### Automatic Authentication (MCP/Claude Desktop)
+
+When using this server through Claude Desktop or other MCP clients, the server will automatically handle authentication:
+
+1. **First time setup**: If no token exists, the server will:
+   - Automatically open your browser to Google's authorization page
+   - Start a temporary local server to receive the OAuth callback
+   - Save the authentication token automatically
+   - Continue with normal operation
+
+2. **Subsequent runs**: The server will use the saved token and refresh it automatically when needed.
+
 ## Usage
 
 Once setup is complete, you can start the MCP server:
@@ -190,7 +202,16 @@ To use this server with MCP-compatible systems, add the following to your MCP se
    - Ensure the Google Meet API is enabled in your Google Cloud project
 
 4. **Missing environment variables**
-   - Set `GOOGLE_MEET_CREDENTIALS_PATH` and `GOOGLE_MEET_TOKEN_PATH` before running
+   - Set `GOOGLE_OAUTH_CREDENTIALS` (simplified) or both `GOOGLE_MEET_CREDENTIALS_PATH` and `GOOGLE_MEET_TOKEN_PATH` (advanced)
+
+5. **Authentication timeout or port issues**
+   - If port 3000 is in use, close other applications using it
+   - If authentication times out, try running the manual setup script
+   - Check that your credentials file has `http://localhost` in redirect URIs
+
+6. **Browser doesn't open automatically**
+   - Copy the authentication URL from the console and open it manually
+   - Complete the authorization and return to Claude
 
 ## Contributing
 
