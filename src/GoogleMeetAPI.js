@@ -25,7 +25,12 @@ class GoogleMeetAPI {
   async initialize() {
     const credentials = JSON.parse(await fs.readFile(this.credentialsPath, 'utf8'));
     
-    const { client_id, client_secret, redirect_uris } = credentials.web;
+    // Handle both 'web' and 'installed' credential types
+    const credentialData = credentials.web || credentials.installed;
+    if (!credentialData) {
+      throw new Error('Invalid credentials file format. Expected "web" or "installed" key.');
+    }
+    const { client_id, client_secret, redirect_uris } = credentialData;
     
     const oAuth2Client = new google.auth.OAuth2(
       client_id, 

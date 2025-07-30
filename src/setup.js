@@ -56,7 +56,12 @@ async function main() {
     const credentials = JSON.parse(content);
     
     // Create an OAuth2 client with the given credentials
-    const { client_id, client_secret, redirect_uris } = credentials.web;
+    // Handle both 'web' and 'installed' credential types
+    const credentialData = credentials.web || credentials.installed;
+    if (!credentialData) {
+      throw new Error('Invalid credentials file format. Expected "web" or "installed" key.');
+    }
+    const { client_id, client_secret, redirect_uris } = credentialData;
     
     // Use the first registered redirect URI from credentials
     const redirectUri = redirect_uris[0] || 'http://localhost:3000';
