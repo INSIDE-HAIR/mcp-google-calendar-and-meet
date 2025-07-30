@@ -13,22 +13,26 @@ import open from 'open';
 import path from 'path';
 import readline from 'readline';
 
-// Scopes required for Google Meet functionality via Calendar API and Meet API
+// Scopes required for Google Meet functionality via Calendar API and Meet API v2beta
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar',
-  'https://www.googleapis.com/auth/meetings.space.created'
+  'https://www.googleapis.com/auth/meetings.space.created',
+  'https://www.googleapis.com/auth/meetings.space.readonly',
+  'https://www.googleapis.com/auth/meetings.space.settings'
 ];
-
-// Create readline interface for user input
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
 
 // Promisify readline question
 function question(query) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  
   return new Promise(resolve => {
-    rl.question(query, resolve);
+    rl.question(query, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
   });
 }
 
@@ -61,7 +65,6 @@ async function main() {
       console.error(`Error: Credentials file not found at ${credentialsPath}`);
       console.error('Please download OAuth 2.0 Client ID credentials from Google Cloud Console');
       console.error('and save them to this path.');
-      rl.close();
       process.exit(1);
     }
 
@@ -131,14 +134,12 @@ async function main() {
       if (error.response && error.response.data) {
         console.error('Error details:', error.response.data);
       }
-      rl.close();
       process.exit(1);
     }
     
-    rl.close();
+    console.log('✅ Setup completed successfully!');
   } catch (error) {
     console.error('\nError during setup:', error);
-    rl.close();
     process.exit(1);
   }
 }

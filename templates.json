@@ -1,0 +1,197 @@
+{
+  "google_meet_templates": {
+    "create_meeting_basic": {
+      "summary": "Reunión de Proyecto",
+      "start_time": "2025-02-01T10:00:00Z",
+      "end_time": "2025-02-01T11:00:00Z",
+      "description": "Descripción opcional de la reunión",
+      "attendees": ["usuario1@empresa.com", "usuario2@empresa.com"]
+    },
+    
+    "create_meeting_with_recording": {
+      "summary": "Reunión con Grabación",
+      "start_time": "2025-02-01T10:00:00Z", 
+      "end_time": "2025-02-01T11:00:00Z",
+      "description": "Reunión que se grabará automáticamente",
+      "attendees": ["usuario1@empresa.com"],
+      "enable_recording": true
+    },
+    
+    "create_meeting_with_cohosts": {
+      "summary": "Reunión con Co-anfitriones",
+      "start_time": "2025-02-01T10:00:00Z",
+      "end_time": "2025-02-01T11:00:00Z", 
+      "description": "Reunión con co-anfitriones asignados",
+      "attendees": ["participante@empresa.com"],
+      "co_hosts": ["cohost1@empresa.com", "cohost2@empresa.com"],
+      "enable_recording": true
+    },
+    
+    "create_meeting_with_transcription": {
+      "summary": "Reunión con Transcripción",
+      "start_time": "2025-02-01T10:00:00Z",
+      "end_time": "2025-02-01T11:00:00Z",
+      "description": "Reunión con transcripción automática habilitada", 
+      "attendees": ["usuario@empresa.com"],
+      "enable_recording": true,
+      "enable_transcription": true,
+      "enable_smart_notes": true
+    },
+    
+    "create_meeting_with_moderation": {
+      "summary": "Reunión Moderada",
+      "start_time": "2025-02-01T10:00:00Z",
+      "end_time": "2025-02-01T11:00:00Z",
+      "description": "Reunión con controles de moderación",
+      "attendees": ["participante@empresa.com"],
+      "co_hosts": ["moderador@empresa.com"],
+      "space_config": {
+        "moderation_mode": "ON",
+        "chat_restriction": "HOSTS_ONLY",
+        "present_restriction": "HOSTS_ONLY",
+        "default_join_as_viewer": true
+      }
+    },
+    
+    "create_meeting_enterprise_full": {
+      "summary": "Reunión Empresarial Completa",
+      "start_time": "2025-02-01T10:00:00Z",
+      "end_time": "2025-02-01T12:00:00Z",
+      "description": "Reunión empresarial con todas las funcionalidades v2.0 habilitadas",
+      "attendees": [
+        "participante1@empresa.com",
+        "participante2@empresa.com", 
+        "participante3@empresa.com"
+      ],
+      "co_hosts": [
+        "cohost1@empresa.com",
+        "cohost2@empresa.com"
+      ],
+      "enable_recording": true,
+      "enable_transcription": true,
+      "enable_smart_notes": true,
+      "attendance_report": true,
+      "space_config": {
+        "moderation_mode": "ON",
+        "chat_restriction": "HOSTS_ONLY",
+        "present_restriction": "HOSTS_ONLY",
+        "default_join_as_viewer": false
+      },
+      "guest_permissions": {
+        "can_invite_others": false,
+        "can_modify": false,
+        "can_see_other_guests": true
+      }
+    },
+    
+    "create_meeting_webinar_style": {
+      "summary": "Webinar Público",
+      "start_time": "2025-02-01T14:00:00Z",
+      "end_time": "2025-02-01T15:30:00Z",
+      "description": "Webinar con participantes como viewers por defecto",
+      "attendees": [
+        "marketing@empresa.com",
+        "ventas@empresa.com"
+      ],
+      "co_hosts": ["presentador@empresa.com"],
+      "enable_recording": true,
+      "enable_transcription": true,
+      "attendance_report": true,
+      "space_config": {
+        "moderation_mode": "ON",
+        "chat_restriction": "HOSTS_ONLY",
+        "present_restriction": "HOSTS_ONLY", 
+        "default_join_as_viewer": true
+      }
+    },
+    
+    "create_meeting_training_session": {
+      "summary": "Sesión de Entrenamiento",
+      "start_time": "2025-02-01T09:00:00Z",
+      "end_time": "2025-02-01T12:00:00Z",
+      "description": "Sesión de entrenamiento con seguimiento de asistencia",
+      "attendees": [
+        "empleado1@empresa.com",
+        "empleado2@empresa.com",
+        "empleado3@empresa.com"
+      ],
+      "co_hosts": ["instructor@empresa.com"],
+      "enable_recording": true,
+      "enable_transcription": true,
+      "enable_smart_notes": true,
+      "attendance_report": true,
+      "space_config": {
+        "moderation_mode": "OFF",
+        "chat_restriction": "NO_RESTRICTION",
+        "present_restriction": "HOSTS_ONLY",
+        "default_join_as_viewer": false
+      }
+    },
+    
+    "update_meeting_template": {
+      "meeting_id": "MEETING_ID_AQUI",
+      "summary": "Título Actualizado",
+      "description": "Nueva descripción",
+      "start_time": "2025-02-01T11:00:00Z",
+      "end_time": "2025-02-01T12:00:00Z",
+      "attendees": ["nuevo_participante@empresa.com"]
+    },
+    
+    "add_space_members_template": {
+      "space_name": "spaces/SPACE_ID_AQUI",
+      "member_emails": [
+        "nuevo_cohost@empresa.com",
+        "otro_miembro@empresa.com"
+      ],
+      "role": "COHOST"
+    }
+  },
+  
+  "parameter_reference": {
+    "create_meeting_parameters": {
+      "required": {
+        "summary": "string - Título de la reunión",
+        "start_time": "string - Hora de inicio en formato ISO (ej: 2025-02-01T10:00:00Z)",
+        "end_time": "string - Hora de fin en formato ISO (ej: 2025-02-01T11:00:00Z)"
+      },
+      "optional": {
+        "description": "string - Descripción de la reunión",
+        "attendees": "array[string] - Lista de emails de participantes",
+        "co_hosts": "array[string] - Lista de emails de co-anfitriones",
+        "enable_recording": "boolean - Habilitar grabación automática (requiere Google Workspace Business+)",
+        "enable_transcription": "boolean - Habilitar transcripción automática",
+        "enable_smart_notes": "boolean - Habilitar notas inteligentes con IA", 
+        "attendance_report": "boolean - Generar reporte de asistencia",
+        "space_config": {
+          "moderation_mode": "string - 'ON' | 'OFF' - Habilitar moderación",
+          "chat_restriction": "string - 'HOSTS_ONLY' | 'NO_RESTRICTION' - Restricción de chat",
+          "present_restriction": "string - 'HOSTS_ONLY' | 'NO_RESTRICTION' - Restricción de presentación",
+          "default_join_as_viewer": "boolean - Los participantes se unen como viewers por defecto"
+        }
+      }
+    },
+    
+    "space_member_roles": {
+      "COHOST": "Co-anfitrión con permisos completos de moderación",
+      "MEMBER": "Miembro regular con permisos estándar", 
+      "VIEWER": "Solo puede ver, sin permisos de participación"
+    },
+    
+    "workspace_requirements": {
+      "basic_features": "Google Account gratuita - Creación básica de reuniones",
+      "recording_transcription": "Google Workspace Business Standard+ - Grabación y transcripción",
+      "smart_notes": "Google Workspace Enterprise - Notas inteligentes con IA",
+      "advanced_moderation": "Google Workspace Business+ - Controles avanzados de moderación"
+    }
+  },
+  
+  "quick_examples": {
+    "simple_meeting": "create_meeting({ summary: 'Reunión Rápida', start_time: '2025-02-01T10:00:00Z', end_time: '2025-02-01T11:00:00Z' })",
+    
+    "meeting_with_recording": "create_meeting({ summary: 'Reunión Grabada', start_time: '2025-02-01T10:00:00Z', end_time: '2025-02-01T11:00:00Z', enable_recording: true })",
+    
+    "add_cohost": "add_space_members({ space_name: 'spaces/abc123', member_emails: ['cohost@empresa.com'], role: 'COHOST' })",
+    
+    "moderated_meeting": "create_meeting({ summary: 'Reunión Moderada', start_time: '2025-02-01T10:00:00Z', end_time: '2025-02-01T11:00:00Z', space_config: { moderation_mode: 'ON', chat_restriction: 'HOSTS_ONLY' } })"
+  }
+}

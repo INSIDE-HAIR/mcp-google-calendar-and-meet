@@ -70,9 +70,8 @@ class GoogleMeetAPI {
     // Initialize the calendar API
     this.calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
     
-    // Note: Meet API v2 would be initialized here for advanced recording features
-    // Currently, recording configuration is handled through calendar event descriptions
-    // this.meet = google.meet({ version: 'v2', auth: oAuth2Client }); // Future implementation
+    // Initialize Google Meet API v2beta for advanced features
+    this.meet = google.meet({ version: 'v2beta', auth: oAuth2Client });
   }
   
   /**
@@ -161,13 +160,53 @@ class GoogleMeetAPI {
    * @param {string} description - Description for the meeting
    * @param {Array<string>} attendees - List of email addresses for attendees
    * @param {boolean} enableRecording - Whether to enable recording (requires Google Workspace)
+   * @param {Object} options - Additional options
+   * @param {Array<string>} options.coHosts - List of email addresses for co-hosts
+   * @param {boolean} options.enableTranscription - Enable transcription
+   * @param {boolean} options.enableSmartNotes - Enable smart notes
+   * @param {boolean} options.attendanceReport - Enable attendance report
+   * @param {Object} options.spaceConfig - Space configuration options
+   * @param {Object} options.guestPermissions - Guest permissions for Calendar API
    * @returns {Promise<Object>} - Created meeting details
    */
-  async createMeeting(summary, startTime, endTime, description = "", attendees = [], enableRecording = false) {
+  async createMeeting(summary, startTime, endTime, description = "", attendees = [], enableRecording = false, options = {}) {
+    const { 
+      coHosts = [], 
+      enableTranscription = false, 
+      enableSmartNotes = false, 
+      attendanceReport = false, 
+      spaceConfig = {},
+      guestPermissions = {}
+    } = options;
+
+    // Try to create space using Meet API v2beta first for advanced features
+    let spaceData = null;
+    let meetLink = null;
+    
+    if (enableRecording || enableTranscription || enableSmartNotes || coHosts.length > 0 || Object.keys(spaceConfig).length > 0) {
+      try {
+        spaceData = await this.createMeetSpace({
+          enableRecording,
+          enableTranscription,
+          enableSmartNotes,
+          attendanceReport,
+          spaceConfig
+        });
+        meetLink = spaceData.meetingUri;
+        
+        // Add co-hosts to the space
+        if (coHosts.length > 0) {
+          await this.addMembersToSpace(spaceData.name, coHosts, 'COHOST');
+        }
+      } catch (error) {
+        console.warn('Failed to create advanced Meet space, falling back to Calendar API:', error.message);
+      }
+    }
+
     // Prepare attendees list in the format required by the API
     const formattedAttendees = attendees.map(email => ({ email }));
     
-    // Create the event with Google Meet conferencing
+    // Create the event with Google Meet conferencing and guest permissions
     const event = {
       summary: summary,
       description: description,
@@ -180,17 +219,35 @@ class GoogleMeetAPI {
         timeZone: 'UTC',
       },
       attendees: formattedAttendees,
-      conferenceData: {
+      conferenceData: spaceData ? {
+        conferenceId: spaceData.name.split('/').pop(),
+        conferenceSolution: {
+          key: {
+            type: "hangoutsMeet"
+          }
+        }
+      } : {
         createRequest: {
           requestId: `meet-${Date.now()}`
         }
-      }
+      },
+      // Guest permissions from Calendar API
+      guestsCanInviteOthers: guestPermissions.canInviteOthers !== undefined ? guestPermissions.canInviteOthers : true,
+      guestsCanModify: guestPermissions.canModify !== undefined ? guestPermissions.canModify : false,
+      guestsCanSeeOtherGuests: guestPermissions.canSeeOtherGuests !== undefined ? guestPermissions.canSeeOtherGuests : true
     };
     
-    // Add recording note to description if enabled
-    if (enableRecording) {
+    // Add feature notes to description
+    let featureNotes = [];
+    if (enableRecording) featureNotes.push('📹 Recording enabled');
+    if (enableTranscription) featureNotes.push('📝 Transcription enabled');
+    if (enableSmartNotes) featureNotes.push('🧠 Smart notes enabled');
+    if (coHosts.length > 0) featureNotes.push(`👥 Co-hosts: ${coHosts.join(', ')}`);
+    if (attendanceReport) featureNotes.push('📊 Attendance report enabled');
+    
+    if (featureNotes.length > 0) {
       event.description = (description ? description + '\n\n' : '') + 
-        '📹 Note: Recording will be enabled for this meeting (requires Google Workspace Business Standard or higher).';
+        featureNotes.join('\n') + '\n\n(Requires Google Workspace Business Standard or higher)';
     }
     
     try {
@@ -304,7 +361,9 @@ class GoogleMeetAPI {
   async performAutoAuth(oAuth2Client) {
     const SCOPES = [
       'https://www.googleapis.com/auth/calendar',
-      'https://www.googleapis.com/auth/meetings.space.created'
+      'https://www.googleapis.com/auth/meetings.space.created',
+      'https://www.googleapis.com/auth/meetings.space.readonly',
+      'https://www.googleapis.com/auth/meetings.space.settings'
     ];
 
     console.error('\n🔐 Google Authentication Required');
@@ -405,18 +464,160 @@ class GoogleMeetAPI {
   }
 
   /**
+   * Create a Google Meet space with advanced configuration.
+   * @param {Object} config - Space configuration
+   * @returns {Promise<Object>} - Created space data
+   */
+  async createMeetSpace(config) {
+    const spaceConfig = {
+      accessType: 'ALL',
+      entryPointAccess: 'ALL'
+    };
+
+    // Add moderation settings
+    if (config.spaceConfig) {
+      if (config.spaceConfig.moderation_mode) {
+        spaceConfig.moderation = {
+          mode: config.spaceConfig.moderation_mode
+        };
+      }
+
+      if (config.spaceConfig.chat_restriction || config.spaceConfig.present_restriction || config.spaceConfig.default_join_as_viewer) {
+        spaceConfig.moderationRestrictions = {};
+        if (config.spaceConfig.chat_restriction) {
+          spaceConfig.moderationRestrictions.chatRestriction = config.spaceConfig.chat_restriction;
+        }
+        if (config.spaceConfig.present_restriction) {
+          spaceConfig.moderationRestrictions.presentRestriction = config.spaceConfig.present_restriction;
+        }
+        if (config.spaceConfig.default_join_as_viewer !== undefined) {
+          spaceConfig.moderationRestrictions.defaultJoinAsViewerType = config.spaceConfig.default_join_as_viewer ? 'ON' : 'OFF';
+        }
+      }
+    }
+
+    // Add artifact configuration
+    if (config.enableRecording || config.enableTranscription || config.enableSmartNotes) {
+      spaceConfig.artifactConfig = {};
+      
+      if (config.enableRecording) {
+        spaceConfig.artifactConfig.recordingConfig = {
+          autoGenerationType: "ON"
+        };
+      }
+      
+      if (config.enableTranscription) {
+        spaceConfig.artifactConfig.transcriptConfig = {
+          autoGenerationType: "ON"
+        };
+      }
+      
+      if (config.enableSmartNotes) {
+        spaceConfig.artifactConfig.smartNotesConfig = {
+          autoGenerationType: "ON"
+        };
+      }
+    }
+
+    // Add attendance report
+    if (config.attendanceReport) {
+      spaceConfig.attendanceReportGenerationType = 'ENABLED';
+    }
+
+    const response = await this.meet.spaces.create({
+      requestBody: {
+        config: spaceConfig
+      }
+    });
+
+    return response.data;
+  }
+
+  /**
+   * Add members to a Google Meet space.
+   * @param {string} spaceName - Name of the space (spaces/{space_id})
+   * @param {Array<string>} memberEmails - List of member email addresses
+   * @param {string} role - Role for the members (COHOST, MEMBER, VIEWER)
+   * @returns {Promise<Array>} - Created members
+   */
+  async addMembersToSpace(spaceName, memberEmails, role = 'MEMBER') {
+    const members = [];
+    
+    for (const email of memberEmails) {
+      try {
+        const response = await this.meet.spaces.members.create({
+          parent: spaceName,
+          requestBody: {
+            user: { email },
+            role: role
+          }
+        });
+        members.push(response.data);
+      } catch (error) {
+        console.warn(`Failed to add member ${email} to space:`, error.message);
+      }
+    }
+    
+    return members;
+  }
+
+  /**
+   * List members of a Google Meet space.
+   * @param {string} spaceName - Name of the space (spaces/{space_id})
+   * @returns {Promise<Array>} - List of members
+   */
+  async listSpaceMembers(spaceName) {
+    try {
+      const response = await this.meet.spaces.members.list({
+        parent: spaceName
+      });
+      return response.data.members || [];
+    } catch (error) {
+      throw new Error(`Error listing space members: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get a specific member of a Google Meet space.
+   * @param {string} memberName - Full name of the member (spaces/{space}/members/{member})
+   * @returns {Promise<Object>} - Member details
+   */
+  async getSpaceMember(memberName) {
+    try {
+      const response = await this.meet.spaces.members.get({
+        name: memberName
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Error getting space member: ${error.message}`);
+    }
+  }
+
+  /**
+   * Remove a member from a Google Meet space.
+   * @param {string} memberName - Full name of the member (spaces/{space}/members/{member})
+   * @returns {Promise<boolean>} - True if removed successfully
+   */
+  async removeSpaceMember(memberName) {
+    try {
+      await this.meet.spaces.members.delete({
+        name: memberName
+      });
+      return true;
+    } catch (error) {
+      throw new Error(`Error removing space member: ${error.message}`);
+    }
+  }
+
+  /**
    * Get recordings for a meeting.
    * @param {string} meetingCode - The meeting code from the Meet URL
    * @returns {Promise<Object>} - Recording information
    */
   async getMeetingRecordings(meetingCode) {
     try {
-      // Note: This requires the Google Meet API v2 and proper workspace permissions
-      // The actual implementation would need to:
-      // 1. Find the conference record by meeting code
-      // 2. List recordings for that conference record
-      
-      // For now, return a placeholder indicating the feature requires workspace
+      // Try to find the conference record by meeting code
+      // This is a simplified implementation - in practice, you'd need to search through conference records
       return {
         message: "Recording retrieval requires Google Workspace Business Standard or higher",
         meeting_code: meetingCode,

@@ -32,7 +32,7 @@ class GoogleMeetMcpServer {
     this.server = new Server(
       {
         name: 'google-meet-mcp',
-        version: '1.0.0',
+        version: '2.0.0',
       },
       {
         capabilities: {
@@ -126,7 +126,7 @@ class GoogleMeetMcpServer {
         },
         {
           name: 'create_meeting',
-          description: 'Create a new Google Meet meeting',
+          description: 'Create a new Google Meet meeting with advanced features',
           inputSchema: {
             type: 'object',
             properties: {
@@ -156,6 +156,68 @@ class GoogleMeetMcpServer {
               enable_recording: {
                 type: 'boolean',
                 description: 'Enable recording for the meeting (requires Google Workspace Business Standard or higher)'
+              },
+              co_hosts: {
+                type: 'array',
+                description: 'List of email addresses for co-hosts (optional)',
+                items: {
+                  type: 'string'
+                }
+              },
+              enable_transcription: {
+                type: 'boolean',
+                description: 'Enable automatic transcription (requires Google Workspace)'
+              },
+              enable_smart_notes: {
+                type: 'boolean',
+                description: 'Enable automatic smart notes (requires Google Workspace)'
+              },
+              attendance_report: {
+                type: 'boolean',
+                description: 'Enable attendance report generation'
+              },
+              space_config: {
+                type: 'object',
+                description: 'Advanced space configuration options',
+                properties: {
+                  moderation_mode: {
+                    type: 'string',
+                    enum: ['ON', 'OFF'],
+                    description: 'Enable moderation for the meeting'
+                  },
+                  chat_restriction: {
+                    type: 'string',
+                    enum: ['HOSTS_ONLY', 'NO_RESTRICTION'],
+                    description: 'Chat restriction level'
+                  },
+                  present_restriction: {
+                    type: 'string',
+                    enum: ['HOSTS_ONLY', 'NO_RESTRICTION'],
+                    description: 'Presentation restriction level'
+                  },
+                  default_join_as_viewer: {
+                    type: 'boolean',
+                    description: 'Join participants as viewers by default'
+                  }
+                }
+              },
+              guest_permissions: {
+                type: 'object',
+                description: 'Guest permissions for Calendar API',
+                properties: {
+                  can_invite_others: {
+                    type: 'boolean',
+                    description: 'Allow guests to invite other people (default: true)'
+                  },
+                  can_modify: {
+                    type: 'boolean', 
+                    description: 'Allow guests to modify the event (default: false)'
+                  },
+                  can_see_other_guests: {
+                    type: 'boolean',
+                    description: 'Allow guests to see other attendees (default: true)'
+                  }
+                }
               }
             },
             required: ['summary', 'start_time', 'end_time']
@@ -225,6 +287,74 @@ class GoogleMeetMcpServer {
             },
             required: ['meeting_code']
           }
+        },
+        {
+          name: 'list_space_members',
+          description: 'List members of a Google Meet space',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              space_name: {
+                type: 'string',
+                description: 'Name of the space (spaces/{space_id})'
+              }
+            },
+            required: ['space_name']
+          }
+        },
+        {
+          name: 'get_space_member',
+          description: 'Get details of a specific space member',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              member_name: {
+                type: 'string',
+                description: 'Full name of the member (spaces/{space}/members/{member})'
+              }
+            },
+            required: ['member_name']
+          }
+        },
+        {
+          name: 'add_space_members',
+          description: 'Add members to a Google Meet space',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              space_name: {
+                type: 'string',
+                description: 'Name of the space (spaces/{space_id})'
+              },
+              member_emails: {
+                type: 'array',
+                description: 'List of email addresses to add as members',
+                items: {
+                  type: 'string'
+                }
+              },
+              role: {
+                type: 'string',
+                enum: ['COHOST', 'MEMBER', 'VIEWER'],
+                description: 'Role for the new members (default: MEMBER)'
+              }
+            },
+            required: ['space_name', 'member_emails']
+          }
+        },
+        {
+          name: 'remove_space_member',
+          description: 'Remove a member from a Google Meet space',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              member_name: {
+                type: 'string',
+                description: 'Full name of the member to remove (spaces/{space}/members/{member})'
+              }
+            },
+            required: ['member_name']
+          }
         }
       ]
     };
@@ -293,7 +423,20 @@ class GoogleMeetMcpServer {
         };
       } 
       else if (toolName === 'create_meeting') {
-        const { summary, description = '', start_time, end_time, attendees = [], enable_recording = false } = args;
+        const { 
+          summary, 
+          description = '', 
+          start_time, 
+          end_time, 
+          attendees = [], 
+          enable_recording = false,
+          co_hosts = [],
+          enable_transcription = false,
+          enable_smart_notes = false,
+          attendance_report = false,
+          space_config = {},
+          guest_permissions = {}
+        } = args;
 
         // Validate required parameters
         if (!summary || !start_time || !end_time) {
@@ -314,7 +457,15 @@ class GoogleMeetMcpServer {
           end_time,
           description,
           attendees,
-          enable_recording
+          enable_recording,
+          {
+            coHosts: co_hosts,
+            enableTranscription: enable_transcription,
+            enableSmartNotes: enable_smart_notes,
+            attendanceReport: attendance_report,
+            spaceConfig: space_config,
+            guestPermissions: guest_permissions
+          }
         );
 
         return {
@@ -391,6 +542,78 @@ class GoogleMeetMcpServer {
             {
               type: 'text',
               text: JSON.stringify(recordings, null, 2)
+            }
+          ]
+        };
+      }
+      else if (toolName === 'list_space_members') {
+        const { space_name } = args;
+        
+        if (!space_name) {
+          throw new McpError(ErrorCode.InvalidParams, 'space_name is required');
+        }
+
+        const members = await this.googleMeet.listSpaceMembers(space_name);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(members, null, 2)
+            }
+          ]
+        };
+      }
+      else if (toolName === 'get_space_member') {
+        const { member_name } = args;
+        
+        if (!member_name) {
+          throw new McpError(ErrorCode.InvalidParams, 'member_name is required');
+        }
+
+        const member = await this.googleMeet.getSpaceMember(member_name);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(member, null, 2)
+            }
+          ]
+        };
+      }
+      else if (toolName === 'add_space_members') {
+        const { space_name, member_emails, role = 'MEMBER' } = args;
+        
+        if (!space_name || !member_emails || member_emails.length === 0) {
+          throw new McpError(ErrorCode.InvalidParams, 'space_name and member_emails are required');
+        }
+
+        const members = await this.googleMeet.addMembersToSpace(space_name, member_emails, role);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(members, null, 2)
+            }
+          ]
+        };
+      }
+      else if (toolName === 'remove_space_member') {
+        const { member_name } = args;
+        
+        if (!member_name) {
+          throw new McpError(ErrorCode.InvalidParams, 'member_name is required');
+        }
+
+        const result = await this.googleMeet.removeSpaceMember(member_name);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: result ? 'Member successfully removed' : 'Failed to remove member'
             }
           ]
         };
