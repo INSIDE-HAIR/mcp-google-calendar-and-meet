@@ -41,13 +41,22 @@ class GoogleMeetMcpServer {
       }
     );
 
-    // Setup Google Meet API client
-    const credentialsPath = process.env.GOOGLE_MEET_CREDENTIALS_PATH;
-    const tokenPath = process.env.GOOGLE_MEET_TOKEN_PATH;
+    // Setup Google Meet API client - support both configuration methods
+    let credentialsPath, tokenPath;
     
-    if (!credentialsPath || !tokenPath) {
+    if (process.env.GOOGLE_OAUTH_CREDENTIALS) {
+      // Simplified configuration (single variable)
+      credentialsPath = process.env.GOOGLE_OAUTH_CREDENTIALS;
+      tokenPath = credentialsPath.replace(/\.json$/, '.token.json');
+    } else if (process.env.GOOGLE_MEET_CREDENTIALS_PATH && process.env.GOOGLE_MEET_TOKEN_PATH) {
+      // Local development configuration (two variables)
+      credentialsPath = process.env.GOOGLE_MEET_CREDENTIALS_PATH;
+      tokenPath = process.env.GOOGLE_MEET_TOKEN_PATH;
+    } else {
       console.error("Error: Missing required environment variables.");
-      console.error("Please set GOOGLE_MEET_CREDENTIALS_PATH and GOOGLE_MEET_TOKEN_PATH");
+      console.error("Please set either:");
+      console.error("  - GOOGLE_OAUTH_CREDENTIALS (path to OAuth credentials file)");
+      console.error("  - OR both GOOGLE_MEET_CREDENTIALS_PATH and GOOGLE_MEET_TOKEN_PATH");
       process.exit(1);
     }
 

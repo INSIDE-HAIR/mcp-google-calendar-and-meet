@@ -34,11 +34,22 @@ function question(query) {
 
 async function main() {
   try {
-    // Get credentials and token paths from environment variables or use defaults
-    const credentialsPath = process.env.GOOGLE_MEET_CREDENTIALS_PATH || 
-                          path.join(process.cwd(), 'credentials.json');
-    const tokenPath = process.env.GOOGLE_MEET_TOKEN_PATH || 
-                    path.join(process.cwd(), 'token.json');
+    // Support both configuration methods
+    let credentialsPath, tokenPath;
+    
+    if (process.env.GOOGLE_OAUTH_CREDENTIALS) {
+      // Simplified configuration (single variable)
+      credentialsPath = process.env.GOOGLE_OAUTH_CREDENTIALS;
+      tokenPath = credentialsPath.replace(/\.json$/, '.token.json');
+    } else if (process.env.GOOGLE_MEET_CREDENTIALS_PATH && process.env.GOOGLE_MEET_TOKEN_PATH) {
+      // Local development configuration (two variables)
+      credentialsPath = process.env.GOOGLE_MEET_CREDENTIALS_PATH;
+      tokenPath = process.env.GOOGLE_MEET_TOKEN_PATH;
+    } else {
+      // Use defaults
+      credentialsPath = path.join(process.cwd(), 'credentials.json');
+      tokenPath = path.join(process.cwd(), 'token.json');
+    }
     
     console.log(`Using credentials file: ${credentialsPath}`);
     console.log(`Token will be saved to: ${tokenPath}`);

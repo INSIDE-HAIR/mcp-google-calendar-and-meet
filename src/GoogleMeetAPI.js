@@ -52,7 +52,7 @@ class GoogleMeetAPI {
       }
     } catch (error) {
       throw new Error(
-        "No valid credentials. Please run the setup script first to authorize access."
+        `No valid token found at ${this.tokenPath}. Please run: GOOGLE_OAUTH_CREDENTIALS="${this.credentialsPath}" npm run setup`
       );
     }
     

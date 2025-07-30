@@ -6,32 +6,44 @@ startCommand:
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
-    required:
-      - googleMeetCredentialsPath
-      - googleMeetTokenPath
+    anyOf:
+      - required: [googleOAuthCredentials]
+      - required: [googleMeetCredentialsPath, googleMeetTokenPath]
     properties:
+      googleOAuthCredentials:
+        type: string
+        description: Path to Google OAuth 2.0 credentials file (simplified config - token stored alongside).
       googleMeetCredentialsPath:
         type: string
         default: credentials.json
-        description: Path to Google OAuth 2.0 credentials file (download from Google Cloud Console).
+        description: Path to Google OAuth 2.0 credentials file (advanced config).
       googleMeetTokenPath:
         type: string
         default: token.json
-        description: Path to store/read the authentication token (generated after running setup).
+        description: Path to store/read the authentication token (advanced config).
   commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
-    (config) => ({
-      command: 'node',
-      args: ['src/index.js'],
-      env: {
-        GOOGLE_MEET_CREDENTIALS_PATH: config.googleMeetCredentialsPath,
-        GOOGLE_MEET_TOKEN_PATH: config.googleMeetTokenPath
+    (config) => {
+      const env = {};
+      if (config.googleOAuthCredentials) {
+        env.GOOGLE_OAUTH_CREDENTIALS = config.googleOAuthCredentials;
+      } else {
+        env.GOOGLE_MEET_CREDENTIALS_PATH = config.googleMeetCredentialsPath;
+        env.GOOGLE_MEET_TOKEN_PATH = config.googleMeetTokenPath;
       }
-    })
+      return {
+        command: 'node',
+        args: ['src/index.js'],
+        env: env
+      };
+    }
   exampleConfig:
-    googleMeetCredentialsPath: credentials.json
-    googleMeetTokenPath: token.json
+    # Simplified configuration (recommended)
+    googleOAuthCredentials: /path/to/your/credentials.json
+    # Alternative: Advanced configuration
+    # googleMeetCredentialsPath: credentials.json
+    # googleMeetTokenPath: token.json
 
 # Metadata for Smithery registry
 name: google-meet-mcp-server
