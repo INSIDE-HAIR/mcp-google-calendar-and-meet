@@ -101,6 +101,16 @@ class GoogleMeetMcpServer {
       tools: [
         // Google Calendar API v3 Tools
         {
+          name: "calendar_v3_list_calendars",
+          description:
+            "[Calendar API v3] List all calendars available to the user",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: [],
+          },
+        },
+        {
           name: "calendar_v3_list_events",
           description:
             "[Calendar API v3] List upcoming calendar events with Google Meet conferences",
@@ -119,6 +129,10 @@ class GoogleMeetMcpServer {
               time_max: {
                 type: "string",
                 description: "End time in ISO format (optional)",
+              },
+              calendar_id: {
+                type: "string",
+                description: "Calendar ID to list events from (default: 'primary')",
               },
             },
             required: [],
@@ -196,6 +210,10 @@ class GoogleMeetMcpServer {
                 type: "boolean",
                 description:
                   "Allow guests to see other attendees (default: true)",
+              },
+              calendar_id: {
+                type: "string",
+                description: "Calendar ID to create event in (default: 'primary')",
               },
             },
             required: ["summary", "start_time", "end_time"],
@@ -595,21 +613,7 @@ class GoogleMeetMcpServer {
         },
 
         // Additional Google Meet API v2 Tools (From Official Specs)
-        {
-          name: "meet_v2_delete_space",
-          description:
-            "[Meet API v2 GA] Delete a Google Meet space",
-          inputSchema: {
-            type: "object",
-            properties: {
-              space_name: {
-                type: "string",
-                description: "Name of the space (spaces/{space_id})",
-              },
-            },
-            required: ["space_name"],
-          },
-        },
+        // NOTE: Delete space removed - not supported by Google Meet API v2
         {
           name: "meet_v2_get_participant",
           description:
@@ -684,39 +688,19 @@ class GoogleMeetMcpServer {
             required: ["participant_name"],
           },
         },
-        {
-          name: "meet_v2_get_transcript_entry",
-          description:
-            "[Meet API v2 GA] Get details of a specific transcript entry",
-          inputSchema: {
-            type: "object",
-            properties: {
-              transcript_entry_name: {
-                type: "string",
-                description:
-                  "Name of the transcript entry (conferenceRecords/{record_id}/transcripts/{transcript_id}/entries/{entry_id})",
-              },
-            },
-            required: ["transcript_entry_name"],
-          },
-        },
+        // NOTE: get_transcript_entry removed - not supported by Google Meet API v2
+        // Use meet_v2_list_transcript_entries instead
 
-        // Additional Google Meet API v2beta Tools (From Official Specs)
-        {
-          name: "meet_v2beta_connect_active_conference",
-          description:
-            "[Meet API v2beta] Connect to the active conference in a Google Meet space (WebRTC)",
-          inputSchema: {
-            type: "object",
-            properties: {
-              space_name: {
-                type: "string",
-                description: "Name of the space (spaces/{space_id})",
-              },
-            },
-            required: ["space_name"],
-          },
-        },
+        // ========== Google Meet API v2beta Tools (DISABLED) ==========
+        // NOTE: Beta tools are DISABLED by default (enableV2BetaFeatures: false)
+        // These methods are in Developer Preview and should not be used in production
+        // To enable beta features, set featureFlags.enableV2BetaFeatures = true
+
+        // DISABLED: meet_v2beta_create_member
+        // DISABLED: meet_v2beta_list_members  
+        // DISABLED: meet_v2beta_get_member
+        // DISABLED: meet_v2beta_delete_member
+        // DISABLED: meet_v2beta_connect_active_conference
       ],
     };
   }
@@ -747,15 +731,27 @@ class GoogleMeetMcpServer {
 
     try {
       // Google Calendar API v3 Tools
-      if (toolName === "calendar_v3_list_events") {
+      if (toolName === "calendar_v3_list_calendars") {
+        const calendars = await this.googleMeet.listCalendars();
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(calendars, null, 2),
+            },
+          ],
+        };
+      } else if (toolName === "calendar_v3_list_events") {
         const maxResults = args.max_results || 10;
         const timeMin = args.time_min || null;
         const timeMax = args.time_max || null;
+        const calendarId = args.calendar_id || "primary";
 
         const events = await this.googleMeet.listCalendarEvents(
           maxResults,
           timeMin,
-          timeMax
+          timeMax,
+          calendarId
         );
 
         return {
@@ -795,6 +791,7 @@ class GoogleMeetMcpServer {
           guest_can_invite_others = true,
           guest_can_modify = false,
           guest_can_see_other_guests = true,
+          calendar_id = "primary",
         } = args;
 
         // Validate required parameters
@@ -824,6 +821,7 @@ class GoogleMeetMcpServer {
             canModify: guest_can_modify,
             canSeeOtherGuests: guest_can_see_other_guests,
           },
+          calendarId: calendar_id,
         });
 
         return {
@@ -1248,26 +1246,8 @@ class GoogleMeetMcpServer {
       } 
 
       // Additional Google Meet API v2 Tools (From Official Specs)
-      else if (toolName === "meet_v2_delete_space") {
-        const { space_name } = args;
-
-        if (!space_name) {
-          throw new McpError(ErrorCode.InvalidParams, "space_name is required");
-        }
-
-        const result = await this.googleMeet.deleteSpace(space_name);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: result
-                ? "Space successfully deleted"
-                : "Failed to delete space",
-            },
-          ],
-        };
-      } else if (toolName === "meet_v2_get_participant") {
+      // NOTE: delete_space handler removed - not supported by API
+      else if (toolName === "meet_v2_get_participant") {
         const { participant_name } = args;
 
         if (!participant_name) {
@@ -1341,41 +1321,10 @@ class GoogleMeetMcpServer {
             },
           ],
         };
-      } else if (toolName === "meet_v2_get_transcript_entry") {
-        const { transcript_entry_name } = args;
-
-        if (!transcript_entry_name) {
-          throw new McpError(ErrorCode.InvalidParams, "transcript_entry_name is required");
-        }
-
-        const entry = await this.googleMeet.getTranscriptEntry(transcript_entry_name);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(entry, null, 2),
-            },
-          ],
-        };
-      } else if (toolName === "meet_v2beta_connect_active_conference") {
-        const { space_name } = args;
-
-        if (!space_name) {
-          throw new McpError(ErrorCode.InvalidParams, "space_name is required");
-        }
-
-        const connection = await this.googleMeet.connectActiveConference(space_name);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(connection, null, 2),
-            },
-          ],
-        };
-      } else {
+      } 
+      // NOTE: get_transcript_entry handler removed - not supported by API
+      // NOTE: All v2beta handlers removed - beta features are disabled
+      else {
         throw new McpError(
           ErrorCode.MethodNotFound,
           `Unknown tool: ${toolName}`
