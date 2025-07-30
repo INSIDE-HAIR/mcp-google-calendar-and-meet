@@ -1,5 +1,7 @@
 token.json
 credentials.json
+credentials.token.json
+*.token.json
 node_modules/
 env/
 package-lock.json
