@@ -73,6 +73,16 @@ async function main() {
       process.exit(1);
     }
 
+    // Automatically remove existing token file if it exists
+    try {
+      await fs.access(tokenPath);
+      await fs.unlink(tokenPath);
+      console.log(`🗑️  Removed existing token file: ${tokenPath}`);
+    } catch (error) {
+      // Token file doesn't exist, which is fine
+      console.log(`📝 No existing token found - will create new one`);
+    }
+
     // Load client secrets from the credentials file
     const content = await fs.readFile(credentialsPath, "utf8");
     const credentials = JSON.parse(content);

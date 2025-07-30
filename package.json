@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node src/index.js",
     "setup": "node src/setup.js",
-    "test": "node test-enhanced-features.js",
+    "refresh-token": "./refresh-token.sh",
+    "test": "node test-stable-api.js",
+    "test:calendars": "node test-calendars.js",
     "test:basic": "echo \"Error: no basic test specified\" && exit 1"
   },
   "keywords": [

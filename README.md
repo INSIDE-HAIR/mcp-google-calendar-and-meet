@@ -113,13 +113,34 @@ When using this server through Claude Desktop or other MCP clients, the server w
 
 2. **Subsequent runs**: The server will use the saved token and refresh it automatically when needed.
 
-### Manual Setup Command
+### Manual Token Renewal
 
-If you need to re-authenticate or set up credentials manually:
+If you encounter authentication errors or need to refresh expired tokens:
 
+#### Method 1: Using the convenience script
+```bash
+npm run refresh-token
+```
+
+#### Method 2: Manual process
+1. **Run the setup with your credentials (automatically removes old token):**
+   ```bash
+   G_OAUTH_CREDENTIALS="/path/to/your/credentials.json" npm run setup
+   ```
+
+2. **Complete OAuth authentication in browser and paste the authorization code**
+
+3. **Restart Claude Desktop** (Cmd+Q and reopen) to use the new token
+
+#### Method 3: Full re-authentication
 ```bash
 G_OAUTH_CREDENTIALS="/path/to/your/credentials.json" npm run setup
 ```
+
+**Note:** 
+- **Tokens expire every ~1 hour** - If you see authentication errors in Claude Desktop, use `npm run refresh-token` for quick renewal.
+- **Setup automatically removes old tokens** - No need to manually delete token files, the setup script handles this automatically.
+- **Environment variable support** - Use `G_OAUTH_CREDENTIALS` environment variable to specify credentials file path.
 
 ## Usage
 
@@ -141,21 +162,35 @@ npm test
 
 ### 📅 Google Calendar API v3 Tools
 
-#### 1. `calendar_v3_list_events`
+#### 1. `calendar_v3_list_calendars`
+🆕 **NEW in v2.0** - List all calendars available to the user.
+
+**Parameters:** None
+
+**Returns:** Array of calendar objects with details like name, ID, access role, and primary status.
+
+**Example Usage:**
+```javascript
+// Lists all available calendars
+// Returns: Primary calendar, shared calendars, group calendars, etc.
+```
+
+#### 2. `calendar_v3_list_events`
 List upcoming calendar events (including those with Google Meet conferences).
 
 **Parameters:**
 - `max_results` (optional): Maximum number of results to return (default: 10)
 - `time_min` (optional): Start time in ISO format (default: now)
 - `time_max` (optional): End time in ISO format
+- `calendar_id` (optional): 🆕 **NEW in v2.0** - Specific calendar ID to list events from (default: "primary")
 
-#### 2. `calendar_v3_get_event`
+#### 3. `calendar_v3_get_event`
 Get detailed information about a specific calendar event.
 
 **Parameters:**
 - `event_id` (required): ID of the calendar event to retrieve
 
-#### 3. `calendar_v3_create_event`
+#### 4. `calendar_v3_create_event`
 Create a new calendar event with optional Google Meet conference and guest permissions.
 
 **Parameters:**
@@ -170,6 +205,7 @@ Create a new calendar event with optional Google Meet conference and guest permi
 - `guest_can_invite_others` (optional): Allow guests to invite others (default: true)
 - `guest_can_modify` (optional): Allow guests to modify the event (default: false)
 - `guest_can_see_other_guests` (optional): Allow guests to see other attendees (default: true)
+- `calendar_id` (optional): 🆕 **NEW in v2.0** - Specific calendar ID to create event in (default: "primary")
 
 **Example:**
 ```javascript
@@ -193,7 +229,7 @@ Update an existing calendar event.
 - `event_id` (required): ID of the event to update
 - All optional parameters from `calendar_v3_create_event`
 
-#### 5. `calendar_v3_delete_event`
+#### 6. `calendar_v3_delete_event`
 Delete a calendar event.
 
 **Parameters:**
@@ -201,7 +237,7 @@ Delete a calendar event.
 
 ### 🎥 Google Meet API v2 Tools (Generally Available)
 
-#### 6. `meet_v2_create_space`
+#### 7. `meet_v2_create_space`
 Create a Google Meet space with advanced configuration.
 
 **Parameters:**
