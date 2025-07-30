@@ -3,12 +3,12 @@
  * and Google Meet API to manage Google Meet meetings with recording capabilities.
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import { google } from 'googleapis';
-import open from 'open';
-import http from 'http';
-import { URL } from 'url';
+import fs from "fs/promises";
+import path from "path";
+import { google } from "googleapis";
+import open from "open";
+import http from "http";
+import { URL } from "url";
 
 class GoogleMeetAPI {
   /**
@@ -26,30 +26,36 @@ class GoogleMeetAPI {
    * Initialize the API client with OAuth2 credentials.
    */
   async initialize() {
-    const credentials = JSON.parse(await fs.readFile(this.credentialsPath, 'utf8'));
-    
+    const credentials = JSON.parse(
+      await fs.readFile(this.credentialsPath, "utf8")
+    );
+
     // Handle both 'web' and 'installed' credential types
     const credentialData = credentials.web || credentials.installed;
     if (!credentialData) {
-      throw new Error('Invalid credentials file format. Expected "web" or "installed" key.');
+      throw new Error(
+        'Invalid credentials file format. Expected "web" or "installed" key.'
+      );
     }
     const { client_id, client_secret, redirect_uris } = credentialData;
-    
+
     const oAuth2Client = new google.auth.OAuth2(
-      client_id, 
-      client_secret, 
+      client_id,
+      client_secret,
       redirect_uris[0]
     );
 
     try {
       // Check if token exists and use it
-      const token = JSON.parse(await fs.readFile(this.tokenPath, 'utf8'));
+      const token = JSON.parse(await fs.readFile(this.tokenPath, "utf8"));
       oAuth2Client.setCredentials(token);
-      
+
       // Check if token is expired and needs refresh
       if (token.expiry_date && token.expiry_date < Date.now()) {
         // Token is expired, refresh it
-        const { credentials } = await oAuth2Client.refreshToken(token.refresh_token);
+        const { credentials } = await oAuth2Client.refreshToken(
+          token.refresh_token
+        );
         await fs.writeFile(this.tokenPath, JSON.stringify(credentials));
         oAuth2Client.setCredentials(credentials);
       }
@@ -57,105 +63,192 @@ class GoogleMeetAPI {
       // Token doesn't exist or is invalid, try to create it automatically
       console.error(`No valid token found at ${this.tokenPath}`);
       console.error(`Attempting automatic authentication...`);
-      
+
       try {
         await this.performAutoAuth(oAuth2Client);
       } catch (authError) {
         throw new Error(
-          `Authentication failed. Please run setup manually: GOOGLE_OAUTH_CREDENTIALS="${this.credentialsPath}" npm run setup`
+          `Authentication failed. Please run setup manually: G_OAUTH_CREDENTIALS="${this.credentialsPath}" npm run setup`
         );
       }
     }
-    
+
     // Initialize the calendar API
-    this.calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
-    
+    this.calendar = google.calendar({ version: "v3", auth: oAuth2Client });
+
     // Note: Google Meet API v2beta is not available through googleapis library
     // Advanced features will be simulated through Calendar API + descriptions
     this.meet = null;
-    console.warn('Google Meet API v2beta not available - using Calendar API fallback');
+    console.warn(
+      "Google Meet API v2beta not available - using Calendar API fallback"
+    );
   }
-  
+
+  // ========== GOOGLE CALENDAR API v3 METHODS ==========
+
   /**
-   * List upcoming Google Meet meetings.
+   * List upcoming calendar events (including those with Google Meet).
    * @param {number} maxResults - Maximum number of results to return
    * @param {string} timeMin - Start time in ISO format
    * @param {string} timeMax - End time in ISO format
-   * @returns {Promise<Array>} - List of meetings
+   * @returns {Promise<Array>} - List of calendar events
    */
-  async listMeetings(maxResults = 10, timeMin = null, timeMax = null) {
+  async listCalendarEvents(maxResults = 10, timeMin = null, timeMax = null) {
     // Default timeMin to now if not provided
     if (!timeMin) {
       timeMin = new Date().toISOString();
     }
-    
+
     // Prepare parameters for the API call
     const params = {
-      calendarId: 'primary',
+      calendarId: "primary",
       maxResults: maxResults,
       timeMin: timeMin,
-      orderBy: 'startTime',
+      orderBy: "startTime",
       singleEvents: true,
-      conferenceDataVersion: 1
+      conferenceDataVersion: 1,
     };
-    
+
     if (timeMax) {
       params.timeMax = timeMax;
     }
-    
+
     try {
       const response = await this.calendar.events.list(params);
       const events = response.data.items || [];
-      
-      // Filter for events with conferenceData (Google Meet)
-      const meetings = [];
+
+      // Return all events, format them properly
+      const formattedEvents = [];
       for (const event of events) {
-        if (event.conferenceData) {
-          const meeting = this._formatMeetingData(event);
-          if (meeting) {
-            meetings.push(meeting);
-          }
+        const formattedEvent = this._formatCalendarEvent(event);
+        if (formattedEvent) {
+          formattedEvents.push(formattedEvent);
         }
       }
-      
-      return meetings;
+
+      return formattedEvents;
     } catch (error) {
       throw new Error(`Error listing meetings: ${error.message}`);
     }
   }
-  
+
   /**
-   * Get details of a specific Google Meet meeting.
-   * @param {string} meetingId - ID of the meeting to retrieve
-   * @returns {Promise<Object>} - Meeting details
+   * Get details of a specific calendar event.
+   * @param {string} eventId - ID of the calendar event to retrieve
+   * @returns {Promise<Object>} - Calendar event details
    */
-  async getMeeting(meetingId) {
+  async getCalendarEvent(eventId) {
     try {
       const response = await this.calendar.events.get({
-        calendarId: 'primary',
-        eventId: meetingId,
-        conferenceDataVersion: 1
+        calendarId: "primary",
+        eventId: eventId,
+        conferenceDataVersion: 1,
       });
-      
+
       const event = response.data;
-      
-      if (!event.conferenceData) {
-        throw new Error(`Event with ID ${meetingId} does not have Google Meet conferencing data`);
+      const formattedEvent = this._formatCalendarEvent(event);
+
+      if (!formattedEvent) {
+        throw new Error(`Failed to format event data for event ID ${eventId}`);
       }
-      
-      const meeting = this._formatMeetingData(event);
-      if (!meeting) {
-        throw new Error(`Failed to format meeting data for event ID ${meetingId}`);
-      }
-      
-      return meeting;
+
+      return formattedEvent;
     } catch (error) {
       throw new Error(`Error getting meeting: ${error.message}`);
     }
   }
-  
+
   /**
-   * Create a new Google Meet meeting.
+   * Create a new calendar event with optional Google Meet conference.
+   * @param {Object} eventData - Event data
+   * @param {string} eventData.summary - Title of the event
+   * @param {string} eventData.startTime - Start time in ISO format
+   * @param {string} eventData.endTime - End time in ISO format
+   * @param {string} eventData.description - Description for the event
+   * @param {string} eventData.location - Location for the event
+   * @param {string} eventData.timeZone - Time zone
+   * @param {Array<string>} eventData.attendees - List of email addresses for attendees
+   * @param {boolean} eventData.createMeetConference - Whether to create Google Meet conference
+   * @param {Object} eventData.guestPermissions - Guest permissions
+   * @returns {Promise<Object>} - Created event details
+   */
+  async createCalendarEvent({
+    summary,
+    startTime,
+    endTime,
+    description = "",
+    location = "",
+    timeZone = "UTC",
+    attendees = [],
+    createMeetConference = false,
+    guestPermissions = {},
+  }) {
+    // Prepare attendees list in the format required by the API
+    const formattedAttendees = attendees.map((email) => ({ email }));
+
+    // Create the event object
+    const event = {
+      summary: summary,
+      description: description,
+      location: location,
+      start: {
+        dateTime: startTime,
+        timeZone: timeZone,
+      },
+      end: {
+        dateTime: endTime,
+        timeZone: timeZone,
+      },
+      attendees: formattedAttendees,
+      // Guest permissions from Calendar API
+      guestsCanInviteOthers:
+        guestPermissions.canInviteOthers !== undefined
+          ? guestPermissions.canInviteOthers
+          : true,
+      guestsCanModify:
+        guestPermissions.canModify !== undefined
+          ? guestPermissions.canModify
+          : false,
+      guestsCanSeeOtherGuests:
+        guestPermissions.canSeeOtherGuests !== undefined
+          ? guestPermissions.canSeeOtherGuests
+          : true,
+    };
+
+    // Add Google Meet conference if requested
+    if (createMeetConference) {
+      event.conferenceData = {
+        createRequest: {
+          requestId: `meet-${Date.now()}`,
+          conferenceSolutionKey: {
+            type: "hangoutsMeet",
+          },
+        },
+      };
+    }
+
+    try {
+      const response = await this.calendar.events.insert({
+        calendarId: "primary",
+        conferenceDataVersion: createMeetConference ? 1 : 0,
+        resource: event,
+      });
+
+      const createdEvent = response.data;
+      const formattedEvent = this._formatCalendarEvent(createdEvent);
+
+      if (!formattedEvent) {
+        throw new Error("Failed to format event data for newly created event");
+      }
+
+      return formattedEvent;
+    } catch (error) {
+      throw new Error(`Error creating calendar event: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create a new Google Meet meeting (legacy method for compatibility).
    * @param {string} summary - Title of the meeting
    * @param {string} startTime - Start time in ISO format
    * @param {string} endTime - End time in ISO format
@@ -171,162 +264,305 @@ class GoogleMeetAPI {
    * @param {Object} options.guestPermissions - Guest permissions for Calendar API
    * @returns {Promise<Object>} - Created meeting details
    */
-  async createMeeting(summary, startTime, endTime, description = "", attendees = [], enableRecording = false, options = {}) {
-    const { 
-      coHosts = [], 
-      enableTranscription = false, 
-      enableSmartNotes = false, 
-      attendanceReport = false, 
+  async createMeeting(
+    summary,
+    startTime,
+    endTime,
+    description = "",
+    attendees = [],
+    enableRecording = false,
+    options = {}
+  ) {
+    const {
+      coHosts = [],
+      enableTranscription = false,
+      enableSmartNotes = false,
+      attendanceReport = false,
       spaceConfig = {},
-      guestPermissions = {}
+      guestPermissions = {},
     } = options;
 
     // Note: Using Calendar API with enhanced descriptions for all features
     // Google Meet link will be generated automatically by Calendar API
     if (coHosts.length > 0) {
-      console.info(`Co-hosts will be documented in meeting description: ${coHosts.join(', ')}`);
+      console.info(
+        `Co-hosts will be documented in meeting description: ${coHosts.join(
+          ", "
+        )}`
+      );
     }
 
     // Prepare attendees list in the format required by the API
-    const formattedAttendees = attendees.map(email => ({ email }));
-    
+    const formattedAttendees = attendees.map((email) => ({ email }));
+
     // Create the event with Google Meet conferencing and guest permissions
     const event = {
       summary: summary,
       description: description,
       start: {
         dateTime: startTime,
-        timeZone: 'UTC',
+        timeZone: "UTC",
       },
       end: {
         dateTime: endTime,
-        timeZone: 'UTC',
+        timeZone: "UTC",
       },
       attendees: formattedAttendees,
       conferenceData: {
         createRequest: {
           requestId: `meet-${Date.now()}`,
           conferenceSolutionKey: {
-            type: "hangoutsMeet"
-          }
-        }
+            type: "hangoutsMeet",
+          },
+        },
       },
       // Guest permissions from Calendar API
-      guestsCanInviteOthers: guestPermissions.canInviteOthers !== undefined ? guestPermissions.canInviteOthers : true,
-      guestsCanModify: guestPermissions.canModify !== undefined ? guestPermissions.canModify : false,
-      guestsCanSeeOtherGuests: guestPermissions.canSeeOtherGuests !== undefined ? guestPermissions.canSeeOtherGuests : true
+      guestsCanInviteOthers:
+        guestPermissions.canInviteOthers !== undefined
+          ? guestPermissions.canInviteOthers
+          : true,
+      guestsCanModify:
+        guestPermissions.canModify !== undefined
+          ? guestPermissions.canModify
+          : false,
+      guestsCanSeeOtherGuests:
+        guestPermissions.canSeeOtherGuests !== undefined
+          ? guestPermissions.canSeeOtherGuests
+          : true,
     };
-    
+
     // Add comprehensive feature notes to description
     let featureNotes = [];
-    if (enableRecording) featureNotes.push('📹 Auto-recording enabled (activate manually when meeting starts)');
-    if (enableTranscription) featureNotes.push('📝 Auto-transcription enabled (available post-meeting)');
-    if (enableSmartNotes) featureNotes.push('🧠 Smart notes with AI summaries enabled');
-    if (coHosts.length > 0) featureNotes.push(`👥 Co-hosts assigned: ${coHosts.join(', ')} (promote manually in meeting)`);
-    if (attendanceReport) featureNotes.push('📊 Attendance report will be generated');
-    
+    if (enableRecording)
+      featureNotes.push(
+        "📹 Auto-recording enabled (activate manually when meeting starts)"
+      );
+    if (enableTranscription)
+      featureNotes.push(
+        "📝 Auto-transcription enabled (available post-meeting)"
+      );
+    if (enableSmartNotes)
+      featureNotes.push("🧠 Smart notes with AI summaries enabled");
+    if (coHosts.length > 0)
+      featureNotes.push(
+        `👥 Co-hosts assigned: ${coHosts.join(
+          ", "
+        )} (promote manually in meeting)`
+      );
+    if (attendanceReport)
+      featureNotes.push("📊 Attendance report will be generated");
+
     // Add moderation settings
-    if (spaceConfig.moderation_mode === 'ON') {
-      let moderationNotes = ['🛡️ Moderation enabled:'];
-      if (spaceConfig.chat_restriction === 'HOSTS_ONLY') moderationNotes.push('  • 💬 Chat restricted to hosts only');
-      if (spaceConfig.present_restriction === 'HOSTS_ONLY') moderationNotes.push('  • 🖥️ Screen sharing restricted to hosts only');
-      if (spaceConfig.default_join_as_viewer) moderationNotes.push('  • 👀 Participants join as viewers by default');
-      featureNotes.push(moderationNotes.join('\n'));
+    if (spaceConfig.moderation_mode === "ON") {
+      let moderationNotes = ["🛡️ Moderation enabled:"];
+      if (spaceConfig.chat_restriction === "HOSTS_ONLY")
+        moderationNotes.push("  • 💬 Chat restricted to hosts only");
+      if (spaceConfig.present_restriction === "HOSTS_ONLY")
+        moderationNotes.push("  • 🖥️ Screen sharing restricted to hosts only");
+      if (spaceConfig.default_join_as_viewer)
+        moderationNotes.push("  • 👀 Participants join as viewers by default");
+      featureNotes.push(moderationNotes.join("\n"));
     }
-    
+
     if (featureNotes.length > 0) {
-      event.description = (description ? description + '\n\n' : '') + 
-        '🚀 Enhanced Meeting Features:\n' +
-        featureNotes.join('\n') + 
-        '\n\n⚠️ Note: Advanced features require Google Workspace Business Standard or higher and manual activation during the meeting.';
+      event.description =
+        (description ? description + "\n\n" : "") +
+        "🚀 Enhanced Meeting Features:\n" +
+        featureNotes.join("\n") +
+        "\n\n⚠️ Note: Advanced features require Google Workspace Business Standard or higher and manual activation during the meeting.";
     }
-    
+
     try {
       const response = await this.calendar.events.insert({
-        calendarId: 'primary',
+        calendarId: "primary",
         conferenceDataVersion: 1,
-        resource: event
+        resource: event,
       });
-      
+
       const createdEvent = response.data;
-      
+
       if (!createdEvent.conferenceData) {
         throw new Error("Failed to create Google Meet conferencing data");
       }
-      
+
       const meeting = this._formatMeetingData(createdEvent);
       if (!meeting) {
-        throw new Error("Failed to format meeting data for newly created event");
+        throw new Error(
+          "Failed to format meeting data for newly created event"
+        );
       }
-      
+
       return meeting;
     } catch (error) {
       throw new Error(`Error creating meeting: ${error.message}`);
     }
   }
-  
+
   /**
-   * Update an existing Google Meet meeting.
+   * Update an existing calendar event.
+   * @param {string} eventId - ID of the event to update
+   * @param {Object} updateData - Fields to update
+   * @returns {Promise<Object>} - Updated event details
+   */
+  async updateCalendarEvent(eventId, updateData = {}) {
+    try {
+      // First, get the existing event
+      const response = await this.calendar.events.get({
+        calendarId: "primary",
+        eventId: eventId,
+      });
+
+      const event = response.data;
+
+      // Update the fields that were provided
+      if (updateData.summary !== undefined) {
+        event.summary = updateData.summary;
+      }
+
+      if (updateData.description !== undefined) {
+        event.description = updateData.description;
+      }
+
+      if (updateData.location !== undefined) {
+        event.location = updateData.location;
+      }
+
+      if (updateData.startTime !== undefined) {
+        event.start.dateTime = updateData.startTime;
+      }
+
+      if (updateData.endTime !== undefined) {
+        event.end.dateTime = updateData.endTime;
+      }
+
+      if (updateData.timeZone !== undefined) {
+        event.start.timeZone = updateData.timeZone;
+        event.end.timeZone = updateData.timeZone;
+      }
+
+      if (updateData.attendees !== undefined) {
+        event.attendees = updateData.attendees.map((email) => ({ email }));
+      }
+
+      // Update guest permissions
+      if (updateData.guestCanInviteOthers !== undefined) {
+        event.guestsCanInviteOthers = updateData.guestCanInviteOthers;
+      }
+
+      if (updateData.guestCanModify !== undefined) {
+        event.guestsCanModify = updateData.guestCanModify;
+      }
+
+      if (updateData.guestCanSeeOtherGuests !== undefined) {
+        event.guestsCanSeeOtherGuests = updateData.guestCanSeeOtherGuests;
+      }
+
+      // Make the API call to update the event
+      const updateResponse = await this.calendar.events.update({
+        calendarId: "primary",
+        eventId: eventId,
+        conferenceDataVersion: 1,
+        resource: event,
+      });
+
+      const updatedEvent = updateResponse.data;
+      const formattedEvent = this._formatCalendarEvent(updatedEvent);
+
+      if (!formattedEvent) {
+        throw new Error("Failed to format event data for updated event");
+      }
+
+      return formattedEvent;
+    } catch (error) {
+      throw new Error(`Error updating calendar event: ${error.message}`);
+    }
+  }
+
+  /**
+   * Delete a calendar event.
+   * @param {string} eventId - ID of the event to delete
+   * @returns {Promise<boolean>} - True if deleted successfully
+   */
+  async deleteCalendarEvent(eventId) {
+    try {
+      await this.calendar.events.delete({
+        calendarId: "primary",
+        eventId: eventId,
+      });
+
+      return true;
+    } catch (error) {
+      throw new Error(`Error deleting calendar event: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update an existing Google Meet meeting (legacy method for compatibility).
    * @param {string} meetingId - ID of the meeting to update
    * @param {Object} updateData - Fields to update
    * @returns {Promise<Object>} - Updated meeting details
    */
-  async updateMeeting(meetingId, { summary, description, startTime, endTime, attendees } = {}) {
+  async updateMeeting(
+    meetingId,
+    { summary, description, startTime, endTime, attendees } = {}
+  ) {
     try {
       // First, get the existing event
       const response = await this.calendar.events.get({
-        calendarId: 'primary',
-        eventId: meetingId
+        calendarId: "primary",
+        eventId: meetingId,
       });
-      
+
       const event = response.data;
-      
+
       // Update the fields that were provided
       if (summary !== undefined) {
         event.summary = summary;
       }
-      
+
       if (description !== undefined) {
         event.description = description;
       }
-      
+
       if (startTime !== undefined) {
         event.start.dateTime = startTime;
       }
-      
+
       if (endTime !== undefined) {
         event.end.dateTime = endTime;
       }
-      
+
       if (attendees !== undefined) {
-        event.attendees = attendees.map(email => ({ email }));
+        event.attendees = attendees.map((email) => ({ email }));
       }
-      
+
       // Make the API call to update the event
       const updateResponse = await this.calendar.events.update({
-        calendarId: 'primary',
+        calendarId: "primary",
         eventId: meetingId,
         conferenceDataVersion: 1,
-        resource: event
+        resource: event,
       });
-      
+
       const updatedEvent = updateResponse.data;
-      
+
       if (!updatedEvent.conferenceData) {
-        throw new Error("Updated event does not have Google Meet conferencing data");
+        throw new Error(
+          "Updated event does not have Google Meet conferencing data"
+        );
       }
-      
+
       const meeting = this._formatMeetingData(updatedEvent);
       if (!meeting) {
         throw new Error("Failed to format meeting data for updated event");
       }
-      
+
       return meeting;
     } catch (error) {
       throw new Error(`Error updating meeting: ${error.message}`);
     }
   }
-  
+
   /**
    * Delete a Google Meet meeting.
    * @param {string} meetingId - ID of the meeting to delete
@@ -335,42 +571,44 @@ class GoogleMeetAPI {
   async deleteMeeting(meetingId) {
     try {
       await this.calendar.events.delete({
-        calendarId: 'primary',
-        eventId: meetingId
+        calendarId: "primary",
+        eventId: meetingId,
       });
-      
+
       return true;
     } catch (error) {
       throw new Error(`Error deleting meeting: ${error.message}`);
     }
   }
-  
+
   /**
    * Perform automatic OAuth authentication flow
    * @param {Object} oAuth2Client - The OAuth2 client
    */
   async performAutoAuth(oAuth2Client) {
     const SCOPES = [
-      'https://www.googleapis.com/auth/calendar',
-      'https://www.googleapis.com/auth/meetings.space.created',
-      'https://www.googleapis.com/auth/meetings.space.readonly',
-      'https://www.googleapis.com/auth/meetings.space.settings'
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/meetings.space.created",
+      "https://www.googleapis.com/auth/meetings.space.readonly",
+      "https://www.googleapis.com/auth/meetings.space.settings",
     ];
 
-    console.error('\n🔐 Google Authentication Required');
-    console.error('📝 To use Google Meet MCP Server, you need to authenticate with Google.');
+    console.error("\n🔐 Google Authentication Required");
+    console.error(
+      "📝 To use Google Meet MCP Server, you need to authenticate with Google."
+    );
 
     return new Promise((resolve, reject) => {
       // Create a temporary HTTP server to handle the OAuth callback
       const server = http.createServer((req, res) => {
-        const url = new URL(req.url, 'http://localhost:3000');
-        
-        if (url.pathname === '/oauth2callback') {
-          const code = url.searchParams.get('code');
-          const error = url.searchParams.get('error');
+        const url = new URL(req.url, "http://localhost:3000");
+
+        if (url.pathname === "/oauth2callback") {
+          const code = url.searchParams.get("code");
+          const error = url.searchParams.get("error");
 
           if (error) {
-            res.writeHead(400, { 'Content-Type': 'text/html' });
+            res.writeHead(400, { "Content-Type": "text/html" });
             res.end(`
               <html>
                 <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
@@ -386,7 +624,7 @@ class GoogleMeetAPI {
           }
 
           if (code) {
-            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.writeHead(200, { "Content-Type": "text/html" });
             res.end(`
               <html>
                 <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
@@ -396,63 +634,69 @@ class GoogleMeetAPI {
                 </body>
               </html>
             `);
-            
+
             // Exchange code for tokens
-            oAuth2Client.getToken(code)
+            oAuth2Client
+              .getToken(code)
               .then(({ tokens }) => {
-                return fs.writeFile(this.tokenPath, JSON.stringify(tokens, null, 2))
+                return fs
+                  .writeFile(this.tokenPath, JSON.stringify(tokens, null, 2))
                   .then(() => tokens);
               })
               .then((tokens) => {
                 oAuth2Client.setCredentials(tokens);
-                console.error('✅ Authentication successful! Token saved.');
+                console.error("✅ Authentication successful! Token saved.");
                 server.close();
                 resolve();
               })
-              .catch(err => {
-                console.error('❌ Error saving token:', err);
+              .catch((err) => {
+                console.error("❌ Error saving token:", err);
                 server.close();
                 reject(err);
               });
           }
         } else {
           res.writeHead(404);
-          res.end('Not found');
+          res.end("Not found");
         }
       });
 
       server.listen(3000, () => {
         const authUrl = oAuth2Client.generateAuthUrl({
-          access_type: 'offline',
+          access_type: "offline",
           scope: SCOPES,
-          prompt: 'consent',
-          redirect_uri: 'http://localhost:3000/oauth2callback'
+          prompt: "consent",
+          redirect_uri: "http://localhost:3000/oauth2callback",
         });
 
-        console.error('🌐 Opening browser for authentication...');
+        console.error("🌐 Opening browser for authentication...");
         console.error(`🔗 If browser doesn't open, visit: ${authUrl}`);
 
         // Try to open browser
         open(authUrl).catch(() => {
-          console.error('❌ Could not open browser automatically');
+          console.error("❌ Could not open browser automatically");
           console.error(`📋 Please manually visit: ${authUrl}`);
         });
 
         // Timeout after 5 minutes
         setTimeout(() => {
           server.close();
-          reject(new Error('Authentication timeout. Please try again.'));
+          reject(new Error("Authentication timeout. Please try again."));
         }, 300000);
       });
 
-      server.on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-          console.error('❌ Port 3000 is in use. Please try again or run setup script manually.');
+      server.on("error", (err) => {
+        if (err.code === "EADDRINUSE") {
+          console.error(
+            "❌ Port 3000 is in use. Please try again or run setup script manually."
+          );
         }
         reject(err);
       });
     });
   }
+
+  // ========== GOOGLE MEET API v2 METHODS (GA - Generally Available) ==========
 
   /**
    * Create a Google Meet space with advanced configuration.
@@ -463,10 +707,14 @@ class GoogleMeetAPI {
   async createMeetSpace(config) {
     // Since Google Meet API v2beta is not available in googleapis, we simulate this
     // by returning a mock space object and documenting features in descriptions
-    console.warn('createMeetSpace: Using Calendar API fallback - features documented in meeting description');
-    
-    const spaceId = `space_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    console.warn(
+      "createMeetSpace: Using Calendar API fallback - features documented in meeting description"
+    );
+
+    const spaceId = `space_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
     return {
       name: `spaces/${spaceId}`,
       meetingUri: null, // Will be generated by Calendar API
@@ -476,54 +724,259 @@ class GoogleMeetAPI {
         enableTranscription: config.enableTranscription || false,
         enableSmartNotes: config.enableSmartNotes || false,
         attendanceReport: config.attendanceReport || false,
-        spaceConfig: config.spaceConfig || {}
-      }
+        spaceConfig: config.spaceConfig || {},
+      },
     };
   }
 
   /**
-   * Add members to a Google Meet space.
-   * Note: Fallback implementation - co-hosts will be documented in meeting description
+   * Get details of a Google Meet space.
+   * Note: Fallback implementation - returns simulated space data
    * @param {string} spaceName - Name of the space (spaces/{space_id})
-   * @param {Array<string>} memberEmails - List of member email addresses
-   * @param {string} role - Role for the members (COHOST, MEMBER, VIEWER)
-   * @returns {Promise<Array>} - Simulated members
+   * @returns {Promise<Object>} - Simulated space data
    */
-  async addMembersToSpace(spaceName, memberEmails, role = 'MEMBER') {
-    console.warn(`addMembersToSpace: Using fallback - ${role} members will be documented in meeting description`);
-    
-    const members = [];
-    
-    for (const email of memberEmails) {
-      members.push({
-        name: `${spaceName}/members/${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        user: { email },
-        role: role
-      });
-    }
-    
-    return members;
+  async getMeetSpace(spaceName) {
+    console.warn(
+      "getMeetSpace: Using fallback - Google Meet API v2 not accessible"
+    );
+    return {
+      name: spaceName,
+      meetingUri: `https://meet.google.com/abc-defg-hij`,
+      config: {
+        accessType: "TRUSTED",
+        moderation: { mode: "OFF" },
+        artifactConfig: {
+          recordingConfig: { autoGenerationType: "OFF" },
+          transcriptionConfig: { autoGenerationType: "OFF" },
+          smartNotesConfig: { autoGenerationType: "OFF" },
+        },
+      },
+    };
+  }
+
+  /**
+   * Update configuration of a Google Meet space.
+   * Note: Fallback implementation - logs update request
+   * @param {string} spaceName - Name of the space (spaces/{space_id})
+   * @param {Object} updateData - Configuration to update
+   * @returns {Promise<Object>} - Updated space data
+   */
+  async updateMeetSpace(spaceName, updateData) {
+    console.warn(
+      "updateMeetSpace: Using fallback - configuration changes not applied"
+    );
+    console.info(`Would update ${spaceName} with:`, updateData);
+
+    return {
+      name: spaceName,
+      meetingUri: `https://meet.google.com/abc-defg-hij`,
+      config: {
+        accessType: updateData.accessType || "TRUSTED",
+        moderation: { mode: updateData.moderationMode || "OFF" },
+        moderationRestrictions: {
+          chatRestriction: updateData.chatRestriction || "NO_RESTRICTION",
+          presentRestriction: updateData.presentRestriction || "NO_RESTRICTION",
+        },
+      },
+    };
+  }
+
+  /**
+   * End the active conference in a Google Meet space.
+   * Note: Fallback implementation - feature not available
+   * @param {string} spaceName - Name of the space (spaces/{space_id})
+   * @returns {Promise<boolean>} - Always false (fallback)
+   */
+  async endActiveConference(spaceName) {
+    console.warn(
+      "endActiveConference: Feature not available - Google Meet API v2 not accessible"
+    );
+    return false;
+  }
+
+  /**
+   * List conference records for historical meetings.
+   * Note: Fallback implementation - returns empty list
+   * @param {string} filter - Filter for conference records
+   * @param {number} pageSize - Maximum number of results to return
+   * @returns {Promise<Array>} - Empty list (fallback)
+   */
+  async listConferenceRecords(filter = null, pageSize = 10) {
+    console.warn(
+      "listConferenceRecords: Feature not available - Google Meet API v2 not accessible"
+    );
+    return [];
+  }
+
+  /**
+   * Get details of a specific conference record.
+   * Note: Fallback implementation - feature not available
+   * @param {string} conferenceRecordName - Name of the conference record
+   * @returns {Promise<Object>} - Error message
+   */
+  async getConferenceRecord(conferenceRecordName) {
+    throw new Error(
+      "getConferenceRecord: Feature not available - Google Meet API v2 not accessible"
+    );
+  }
+
+  /**
+   * List recordings for a conference record.
+   * Note: Fallback implementation - returns empty list
+   * @param {string} conferenceRecordName - Name of the conference record
+   * @returns {Promise<Array>} - Empty list (fallback)
+   */
+  async listRecordings(conferenceRecordName) {
+    console.warn(
+      "listRecordings: Feature not available - Google Meet API v2 not accessible"
+    );
+    return [];
+  }
+
+  /**
+   * Get details of a specific recording.
+   * Note: Fallback implementation - feature not available
+   * @param {string} recordingName - Name of the recording
+   * @returns {Promise<Object>} - Error message
+   */
+  async getRecording(recordingName) {
+    throw new Error(
+      "getRecording: Feature not available - Google Meet API v2 not accessible"
+    );
+  }
+
+  /**
+   * List transcripts for a conference record.
+   * Note: Fallback implementation - returns empty list
+   * @param {string} conferenceRecordName - Name of the conference record
+   * @returns {Promise<Array>} - Empty list (fallback)
+   */
+  async listTranscripts(conferenceRecordName) {
+    console.warn(
+      "listTranscripts: Feature not available - Google Meet API v2 not accessible"
+    );
+    return [];
+  }
+
+  /**
+   * Get details of a specific transcript.
+   * Note: Fallback implementation - feature not available
+   * @param {string} transcriptName - Name of the transcript
+   * @returns {Promise<Object>} - Error message
+   */
+  async getTranscript(transcriptName) {
+    throw new Error(
+      "getTranscript: Feature not available - Google Meet API v2 not accessible"
+    );
+  }
+
+  /**
+   * List transcript entries (individual speech segments).
+   * Note: Fallback implementation - returns empty list
+   * @param {string} transcriptName - Name of the transcript
+   * @param {number} pageSize - Maximum number of entries to return
+   * @returns {Promise<Array>} - Empty list (fallback)
+   */
+  async listTranscriptEntries(transcriptName, pageSize = 100) {
+    console.warn(
+      "listTranscriptEntries: Feature not available - Google Meet API v2 not accessible"
+    );
+    return [];
+  }
+
+  // ========== GOOGLE MEET API v2beta METHODS (Developer Preview) ==========
+
+  /**
+   * Create a space member (co-host/member/viewer).
+   * Note: Fallback implementation - members will be documented in meeting description
+   * @param {string} spaceName - Name of the space (spaces/{space_id})
+   * @param {string} userEmail - Email address of the user to add
+   * @param {string} role - Role for the member (COHOST, MEMBER, VIEWER)
+   * @returns {Promise<Object>} - Simulated member data
+   */
+  async createSpaceMember(spaceName, userEmail, role = "MEMBER") {
+    console.warn(
+      `createSpaceMember: Using fallback - ${role} member will be documented in meeting description`
+    );
+
+    const memberId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    return {
+      name: `${spaceName}/members/${memberId}`,
+      email: userEmail,
+      role: role,
+      user: {
+        displayName: userEmail.split("@")[0],
+        type: "HUMAN",
+      },
+    };
   }
 
   /**
    * List members of a Google Meet space.
    * Note: Fallback implementation - returns empty list as feature not available
    * @param {string} spaceName - Name of the space (spaces/{space_id})
+   * @param {number} pageSize - Maximum number of members to return
    * @returns {Promise<Array>} - Empty list (fallback)
    */
-  async listSpaceMembers(spaceName) {
-    console.warn('listSpaceMembers: Feature not available - Google Meet API v2beta not accessible');
+  async listSpaceMembers(spaceName, pageSize = 10) {
+    console.warn(
+      "listSpaceMembers: Feature not available - Google Meet API v2beta not accessible"
+    );
     return [];
   }
 
   /**
-   * Get a specific member of a Google Meet space.
+   * Get details of a specific space member.
    * Note: Fallback implementation - feature not available
    * @param {string} memberName - Full name of the member (spaces/{space}/members/{member})
    * @returns {Promise<Object>} - Error message
    */
   async getSpaceMember(memberName) {
-    throw new Error('getSpaceMember: Feature not available - Google Meet API v2beta not accessible');
+    throw new Error(
+      "getSpaceMember: Feature not available - Google Meet API v2beta not accessible"
+    );
+  }
+
+  /**
+   * Delete a space member.
+   * Note: Fallback implementation - feature not available
+   * @param {string} memberName - Full name of the member (spaces/{space}/members/{member})
+   * @returns {Promise<boolean>} - Always false (fallback)
+   */
+  async deleteSpaceMember(memberName) {
+    console.warn(
+      "deleteSpaceMember: Feature not available - Google Meet API v2beta not accessible"
+    );
+    return false;
+  }
+
+  /**
+   * Add members to a Google Meet space (legacy method for compatibility).
+   * Note: Fallback implementation - co-hosts will be documented in meeting description
+   * @param {string} spaceName - Name of the space (spaces/{space_id})
+   * @param {Array<string>} memberEmails - List of member email addresses
+   * @param {string} role - Role for the members (COHOST, MEMBER, VIEWER)
+   * @returns {Promise<Array>} - Simulated members
+   */
+  async addMembersToSpace(spaceName, memberEmails, role = "MEMBER") {
+    console.warn(
+      `addMembersToSpace: Using fallback - ${role} members will be documented in meeting description`
+    );
+
+    const members = [];
+
+    for (const email of memberEmails) {
+      members.push({
+        name: `${spaceName}/members/${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`,
+        user: { email },
+        role: role,
+      });
+    }
+
+    return members;
   }
 
   /**
@@ -533,7 +986,9 @@ class GoogleMeetAPI {
    * @returns {Promise<boolean>} - Always false (fallback)
    */
   async removeSpaceMember(memberName) {
-    console.warn('removeSpaceMember: Feature not available - Google Meet API v2beta not accessible');
+    console.warn(
+      "removeSpaceMember: Feature not available - Google Meet API v2beta not accessible"
+    );
     return false;
   }
 
@@ -547,17 +1002,68 @@ class GoogleMeetAPI {
       // Try to find the conference record by meeting code
       // This is a simplified implementation - in practice, you'd need to search through conference records
       return {
-        message: "Recording retrieval requires Google Workspace Business Standard or higher",
+        message:
+          "Recording retrieval requires Google Workspace Business Standard or higher",
         meeting_code: meetingCode,
-        recordings: []
+        recordings: [],
       };
     } catch (error) {
       throw new Error(`Error getting recordings: ${error.message}`);
     }
   }
-  
+
   /**
-   * Format event data to meeting format.
+   * Format event data to calendar event format.
+   * @param {Object} event - Event data from Google Calendar API
+   * @returns {Object|null} - Formatted calendar event data or null
+   */
+  _formatCalendarEvent(event) {
+    // Format attendees
+    const attendees = (event.attendees || []).map((attendee) => ({
+      email: attendee.email,
+      response_status: attendee.responseStatus,
+    }));
+
+    // Check for Google Meet conference data
+    let meetLink = null;
+    let hasMeetConference = false;
+
+    if (event.conferenceData) {
+      hasMeetConference = true;
+      for (const entryPoint of event.conferenceData.entryPoints || []) {
+        if (entryPoint.entryPointType === "video") {
+          meetLink = entryPoint.uri;
+          break;
+        }
+      }
+    }
+
+    // Build the formatted calendar event data
+    const calendarEvent = {
+      id: event.id,
+      summary: event.summary || "",
+      description: event.description || "",
+      location: event.location || "",
+      start_time: event.start?.dateTime || event.start?.date,
+      end_time: event.end?.dateTime || event.end?.date,
+      time_zone: event.start?.timeZone || event.end?.timeZone || "UTC",
+      attendees: attendees,
+      creator: event.creator?.email,
+      organizer: event.organizer?.email,
+      created: event.created,
+      updated: event.updated,
+      has_meet_conference: hasMeetConference,
+      meet_link: meetLink,
+      guest_can_invite_others: event.guestsCanInviteOthers,
+      guest_can_modify: event.guestsCanModify,
+      guest_can_see_other_guests: event.guestsCanSeeOtherGuests,
+    };
+
+    return calendarEvent;
+  }
+
+  /**
+   * Format event data to meeting format (legacy method for compatibility).
    * @param {Object} event - Event data from Google Calendar API
    * @returns {Object|null} - Formatted meeting data or null
    */
@@ -565,34 +1071,36 @@ class GoogleMeetAPI {
     if (!event.conferenceData) {
       return null;
     }
-    
+
     // Extract the Google Meet link
     let meetLink = null;
     for (const entryPoint of event.conferenceData.entryPoints || []) {
-      if (entryPoint.entryPointType === 'video') {
+      if (entryPoint.entryPointType === "video") {
         meetLink = entryPoint.uri;
         break;
       }
     }
-    
+
     if (!meetLink) {
       return null;
     }
-    
+
     // Format attendees
-    const attendees = (event.attendees || []).map(attendee => ({
+    const attendees = (event.attendees || []).map((attendee) => ({
       email: attendee.email,
-      response_status: attendee.responseStatus
+      response_status: attendee.responseStatus,
     }));
-    
+
     // Check if recording is mentioned in description
-    const recordingEnabled = event.description?.includes('📹 Note: Recording will be enabled') || false;
-    
+    const recordingEnabled =
+      event.description?.includes("📹 Note: Recording will be enabled") ||
+      false;
+
     // Build the formatted meeting data
     const meeting = {
       id: event.id,
-      summary: event.summary || '',
-      description: event.description || '',
+      summary: event.summary || "",
+      description: event.description || "",
       meet_link: meetLink,
       recording_enabled: recordingEnabled,
       start_time: event.start?.dateTime || event.start?.date,
@@ -603,7 +1111,7 @@ class GoogleMeetAPI {
       created: event.created,
       updated: event.updated,
     };
-    
+
     return meeting;
   }
 }

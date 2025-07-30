@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Google Meet MCP Server v2.0 - An enhanced Model Context Protocol (MCP) server that interacts with Google Meet through both Google Calendar API and Google Meet API v2beta. This server provides comprehensive tools for creating and managing Google Meet meetings with advanced enterprise features.
+Google Meet MCP Server v2.0 - An advanced Model Context Protocol (MCP) server that interacts with Google Meet through Google Calendar API v3 and Google Meet API v2/v2beta. This server provides comprehensive tools for creating and managing Google Meet meetings with advanced enterprise features.
 
 ## Common Development Commands
 
@@ -25,15 +25,18 @@ The project uses ES modules (`"type": "module"` in package.json) and follows thi
    - Entry point for the application
    - Implements the MCP server using `@modelcontextprotocol/sdk`
    - Handles tool registration and request routing
-   - Manages 10 tools: list_meetings, get_meeting, create_meeting, update_meeting, delete_meeting, get_meeting_recordings, list_space_members, get_space_member, add_space_members, remove_space_member
+   - Manages 21 tools across three APIs:
+     - 5 Calendar API v3 tools: calendar_v3_*
+     - 12 Meet API v2 (GA) tools: meet_v2_*
+     - 4 Meet API v2beta tools: meet_v2beta_*
 
 2. **src/GoogleMeetAPI.js** - Google Calendar and Meet API wrapper
    - Handles OAuth2 authentication with Google
-   - Provides methods for CRUD operations on calendar events with Google Meet
-   - Integrates with Google Meet API v2beta for advanced features
-   - Supports comprehensive meeting configuration (recording, transcription, smart notes)
-   - Manages co-hosts and space members
-   - Implements moderation and space configuration features
+   - Three distinct sections for different APIs:
+     - Google Calendar API v3 methods (calendar events with guest permissions)
+     - Google Meet API v2 methods (spaces, conference records, recordings)
+     - Google Meet API v2beta methods (member management)
+   - Provides fallback implementations since Meet API v2beta isn't available in googleapis
    - Manages token persistence and refresh
 
 3. **src/setup.js** - Initial OAuth setup script
@@ -46,9 +49,11 @@ The server requires Google OAuth2 credentials with enhanced scopes:
 1. Environment variables `GOOGLE_MEET_CREDENTIALS_PATH` and `GOOGLE_MEET_TOKEN_PATH` must be set
 2. Initial setup via `npm run setup` to obtain OAuth tokens
 3. Tokens are persisted and automatically refreshed when expired
-4. Additional scopes required for v2beta features:
-   - `https://www.googleapis.com/auth/meetings.space.settings`
-   - `https://www.googleapis.com/auth/meetings.space.readonly`
+4. Required scopes:
+   - `https://www.googleapis.com/auth/calendar` - Calendar management
+   - `https://www.googleapis.com/auth/meetings.space.created` - Create Meet spaces
+   - `https://www.googleapis.com/auth/meetings.space.readonly` - Read space information
+   - `https://www.googleapis.com/auth/meetings.space.settings` - Configure advanced features
 
 ### MCP Protocol Implementation
 
@@ -60,55 +65,88 @@ The server requires Google OAuth2 credentials with enhanced scopes:
 ## Key Dependencies
 
 - `@modelcontextprotocol/sdk` - MCP protocol implementation
-- `googleapis` - Google Calendar API and Meet API v2beta client
+- `googleapis` - Google Calendar API client
 - `open` - For opening browser during OAuth flow
+
+## API Organization (v2.0)
+
+### Google Calendar API v3 Tools
+- **calendar_v3_list_events** - List calendar events with optional Meet links
+- **calendar_v3_get_event** - Get event details including guest permissions
+- **calendar_v3_create_event** - Create events with Meet conferences and guest permissions
+- **calendar_v3_update_event** - Update events including all guest settings
+- **calendar_v3_delete_event** - Delete calendar events
+
+### Google Meet API v2 Tools (Generally Available)
+- **meet_v2_create_space** - Create Meet spaces with advanced configuration
+- **meet_v2_get_space** - Get space details
+- **meet_v2_update_space** - Update space configuration
+- **meet_v2_end_active_conference** - End active conferences
+- **meet_v2_list_conference_records** - List historical conference records
+- **meet_v2_get_conference_record** - Get specific conference details
+- **meet_v2_list_recordings** - List conference recordings
+- **meet_v2_get_recording** - Get recording details
+- **meet_v2_list_transcripts** - List conference transcripts
+- **meet_v2_get_transcript** - Get transcript details
+- **meet_v2_list_transcript_entries** - List individual speech segments
+
+### Google Meet API v2beta Tools (Developer Preview)
+- **meet_v2beta_create_member** - Add members with roles (COHOST/MEMBER/VIEWER)
+- **meet_v2beta_list_members** - List space members
+- **meet_v2beta_get_member** - Get member details
+- **meet_v2beta_delete_member** - Remove space members
 
 ## Enhanced Features (v2.0)
 
-### Advanced Meeting Configuration
-- **Recording**: `enable_recording: true` - Auto-start recording
-- **Transcription**: `enable_transcription: true` - Auto-enable transcription
-- **Smart Notes**: `enable_smart_notes: true` - Auto-generate meeting notes
-- **Co-hosts**: `co_hosts: ['email1', 'email2']` - Assign co-host roles
-- **Attendance Reports**: `attendance_report: true` - Generate attendance reports
+### Calendar Event Guest Permissions
+- `guest_can_invite_others` - Control if guests can invite others
+- `guest_can_modify` - Control if guests can modify the event
+- `guest_can_see_other_guests` - Control guest list visibility
 
-### Space Management
-- **Member Management**: Add/remove/list space members with specific roles
-- **Moderation Settings**: Configure chat/presentation restrictions
-- **Join Settings**: Control default join behavior (viewer/participant)
+### Space Configuration Options
+- **Access Types**: OPEN, TRUSTED, RESTRICTED
+- **Moderation**: Enable/disable moderation mode
+- **Restrictions**: Chat and presentation restrictions
+- **Artifacts**: Recording, transcription, smart notes configuration
+- **Default Roles**: Viewer-only mode for participants
 
 ### Requirements
 - Google Workspace Business Standard or higher for advanced features
-- Additional OAuth scopes for space management
-- Google Meet API v2beta integration
-
-### New Tools Available
-1. `list_space_members` - List members of a Google Meet space
-2. `get_space_member` - Get details of a specific space member
-3. `add_space_members` - Add members to a space with roles (COHOST/MEMBER/VIEWER)
-4. `remove_space_member` - Remove a member from a space
+- Gemini license for smart notes functionality
+- Manual activation required for recording during meetings
 
 ### Example Usage
 ```javascript
-// Create meeting with all features
-await create_meeting({
-  summary: "Enterprise Meeting",
-  start_time: "2024-01-01T10:00:00Z",
-  end_time: "2024-01-01T11:00:00Z",
-  co_hosts: ["cohost@company.com"],
+// Create calendar event with Meet conference
+await calendar_v3_create_event({
+  summary: "Team Meeting",
+  start_time: "2024-02-01T10:00:00Z",
+  end_time: "2024-02-01T11:00:00Z",
+  create_meet_conference: true,
+  guest_can_invite_others: false,
+  guest_can_modify: false
+});
+
+// Create advanced Meet space
+await meet_v2_create_space({
+  access_type: "RESTRICTED",
   enable_recording: true,
   enable_transcription: true,
-  enable_smart_notes: true,
-  attendance_report: true,
-  space_config: {
-    moderation_mode: "ON",
-    chat_restriction: "HOSTS_ONLY",
-    present_restriction: "HOSTS_ONLY"
-  },
-  guest_permissions: {
-    can_invite_others: false,
-    can_modify: false,
-    can_see_other_guests: true
-  }
+  moderation_mode: "ON",
+  chat_restriction: "HOSTS_ONLY"
+});
+
+// Add co-host to space
+await meet_v2beta_create_member({
+  space_name: "spaces/abc123",
+  user_email: "cohost@company.com",
+  role: "COHOST"
 });
 ```
+
+## Important Notes
+
+- Google Meet API v2beta is not available in the googleapis library
+- Advanced features are implemented via fallback methods
+- Recording and transcription features are documented in meeting descriptions
+- Member management returns simulated data for compatibility

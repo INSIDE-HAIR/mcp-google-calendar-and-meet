@@ -27,7 +27,7 @@ startCommand:
     (config) => {
       const env = {};
       if (config.googleOAuthCredentials) {
-        env.GOOGLE_OAUTH_CREDENTIALS = config.googleOAuthCredentials;
+        env.G_OAUTH_CREDENTIALS = config.googleOAuthCredentials;
       } else {
         env.GOOGLE_MEET_CREDENTIALS_PATH = config.googleMeetCredentialsPath;
         env.GOOGLE_MEET_TOKEN_PATH = config.googleMeetTokenPath;
