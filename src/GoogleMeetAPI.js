@@ -181,28 +181,10 @@ class GoogleMeetAPI {
       guestPermissions = {}
     } = options;
 
-    // Try to create space using Meet API v2beta first for advanced features
-    let spaceData = null;
-    let meetLink = null;
-    
-    if (enableRecording || enableTranscription || enableSmartNotes || coHosts.length > 0 || Object.keys(spaceConfig).length > 0) {
-      try {
-        spaceData = await this.createMeetSpace({
-          enableRecording,
-          enableTranscription,
-          enableSmartNotes,
-          attendanceReport,
-          spaceConfig
-        });
-        meetLink = spaceData.meetingUri;
-        
-        // Add co-hosts to the space
-        if (coHosts.length > 0) {
-          await this.addMembersToSpace(spaceData.name, coHosts, 'COHOST');
-        }
-      } catch (error) {
-        console.warn('Failed to create advanced Meet space, falling back to Calendar API:', error.message);
-      }
+    // Note: Using Calendar API with enhanced descriptions for all features
+    // Google Meet link will be generated automatically by Calendar API
+    if (coHosts.length > 0) {
+      console.info(`Co-hosts will be documented in meeting description: ${coHosts.join(', ')}`);
     }
 
     // Prepare attendees list in the format required by the API
@@ -221,16 +203,12 @@ class GoogleMeetAPI {
         timeZone: 'UTC',
       },
       attendees: formattedAttendees,
-      conferenceData: spaceData ? {
-        conferenceId: spaceData.name.split('/').pop(),
-        conferenceSolution: {
-          key: {
+      conferenceData: {
+        createRequest: {
+          requestId: `meet-${Date.now()}`,
+          conferenceSolutionKey: {
             type: "hangoutsMeet"
           }
-        }
-      } : {
-        createRequest: {
-          requestId: `meet-${Date.now()}`
         }
       },
       // Guest permissions from Calendar API
