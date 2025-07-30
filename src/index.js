@@ -89,8 +89,8 @@ class GoogleMeetMcpServer {
     return {
       tools: [
         {
-          name: 'list_meetings',
-          description: 'List upcoming Google Meet meetings',
+          name: 'calendar_list_meetings',
+          description: '[Calendar API] List upcoming Google Meet meetings from calendar',
           inputSchema: {
             type: 'object',
             properties: {
@@ -111,8 +111,8 @@ class GoogleMeetMcpServer {
           }
         },
         {
-          name: 'get_meeting',
-          description: 'Get details of a specific Google Meet meeting',
+          name: 'calendar_get_meeting',
+          description: '[Calendar API] Get details of a specific Google Meet meeting',
           inputSchema: {
             type: 'object',
             properties: {
@@ -125,8 +125,8 @@ class GoogleMeetMcpServer {
           }
         },
         {
-          name: 'create_meeting',
-          description: 'Create a new Google Meet meeting with advanced features',
+          name: 'calendar_create_meeting',
+          description: '[Calendar API] Create a new Google Meet meeting with advanced features documented',
           inputSchema: {
             type: 'object',
             properties: {
@@ -224,8 +224,8 @@ class GoogleMeetMcpServer {
           }
         },
         {
-          name: 'update_meeting',
-          description: 'Update an existing Google Meet meeting',
+          name: 'calendar_update_meeting',
+          description: '[Calendar API] Update an existing Google Meet meeting',
           inputSchema: {
             type: 'object',
             properties: {
@@ -261,8 +261,8 @@ class GoogleMeetMcpServer {
           }
         },
         {
-          name: 'delete_meeting',
-          description: 'Delete a Google Meet meeting',
+          name: 'calendar_delete_meeting',
+          description: '[Calendar API] Delete a Google Meet meeting',
           inputSchema: {
             type: 'object',
             properties: {
@@ -275,8 +275,8 @@ class GoogleMeetMcpServer {
           }
         },
         {
-          name: 'get_meeting_recordings',
-          description: 'Get recordings for a Google Meet meeting (requires Google Workspace)',
+          name: 'meet_get_recordings',
+          description: '[Meet API - Simulated] Get recordings info for a Google Meet (requires Google Workspace)',
           inputSchema: {
             type: 'object',
             properties: {
@@ -289,8 +289,8 @@ class GoogleMeetMcpServer {
           }
         },
         {
-          name: 'list_space_members',
-          description: 'List members of a Google Meet space',
+          name: 'meet_list_members',
+          description: '[Meet API - Simulated] List members of a Google Meet space (returns empty list)',
           inputSchema: {
             type: 'object',
             properties: {
@@ -303,8 +303,8 @@ class GoogleMeetMcpServer {
           }
         },
         {
-          name: 'get_space_member',
-          description: 'Get details of a specific space member',
+          name: 'meet_get_member',
+          description: '[Meet API - Not Available] Get details of a specific space member',
           inputSchema: {
             type: 'object',
             properties: {
@@ -317,34 +317,29 @@ class GoogleMeetMcpServer {
           }
         },
         {
-          name: 'add_space_members',
-          description: 'Add members to a Google Meet space',
+          name: 'meet_add_cohosts',
+          description: '[Meet API - Documented] Add co-hosts info to meeting description (manual promotion needed)',
           inputSchema: {
             type: 'object',
             properties: {
-              space_name: {
+              meeting_id: {
                 type: 'string',
-                description: 'Name of the space (spaces/{space_id})'
+                description: 'Meeting ID to add co-hosts documentation to'
               },
-              member_emails: {
+              cohost_emails: {
                 type: 'array',
-                description: 'List of email addresses to add as members',
+                description: 'List of email addresses to document as co-hosts',
                 items: {
                   type: 'string'
                 }
-              },
-              role: {
-                type: 'string',
-                enum: ['COHOST', 'MEMBER', 'VIEWER'],
-                description: 'Role for the new members (default: MEMBER)'
               }
             },
-            required: ['space_name', 'member_emails']
+            required: ['meeting_id', 'cohost_emails']
           }
         },
         {
-          name: 'remove_space_member',
-          description: 'Remove a member from a Google Meet space',
+          name: 'meet_remove_member',
+          description: '[Meet API - Not Available] Remove a member from a Google Meet space',
           inputSchema: {
             type: 'object',
             properties: {
@@ -385,7 +380,7 @@ class GoogleMeetMcpServer {
     const args = request.params.arguments || {};
 
     try {
-      if (toolName === 'list_meetings') {
+      if (toolName === 'calendar_list_meetings') {
         const maxResults = args.max_results || 10;
         const timeMin = args.time_min || null;
         const timeMax = args.time_max || null;
@@ -405,7 +400,7 @@ class GoogleMeetMcpServer {
           ]
         };
       } 
-      else if (toolName === 'get_meeting') {
+      else if (toolName === 'calendar_get_meeting') {
         const meetingId = args.meeting_id;
         if (!meetingId) {
           throw new McpError(ErrorCode.InvalidParams, 'meeting_id is required');
@@ -422,7 +417,7 @@ class GoogleMeetMcpServer {
           ]
         };
       } 
-      else if (toolName === 'create_meeting') {
+      else if (toolName === 'calendar_create_meeting') {
         const { 
           summary, 
           description = '', 
@@ -477,7 +472,7 @@ class GoogleMeetMcpServer {
           ]
         };
       } 
-      else if (toolName === 'update_meeting') {
+      else if (toolName === 'calendar_update_meeting') {
         const { meeting_id, summary, description, start_time, end_time, attendees } = args;
 
         if (!meeting_id) {
@@ -510,7 +505,7 @@ class GoogleMeetMcpServer {
           ]
         };
       } 
-      else if (toolName === 'delete_meeting') {
+      else if (toolName === 'calendar_delete_meeting') {
         const { meeting_id } = args;
         
         if (!meeting_id) {
@@ -528,7 +523,7 @@ class GoogleMeetMcpServer {
           ]
         };
       }
-      else if (toolName === 'get_meeting_recordings') {
+      else if (toolName === 'meet_get_recordings') {
         const { meeting_code } = args;
         
         if (!meeting_code) {
@@ -546,7 +541,7 @@ class GoogleMeetMcpServer {
           ]
         };
       }
-      else if (toolName === 'list_space_members') {
+      else if (toolName === 'meet_list_members') {
         const { space_name } = args;
         
         if (!space_name) {
@@ -564,7 +559,7 @@ class GoogleMeetMcpServer {
           ]
         };
       }
-      else if (toolName === 'get_space_member') {
+      else if (toolName === 'meet_get_member') {
         const { member_name } = args;
         
         if (!member_name) {
@@ -582,25 +577,34 @@ class GoogleMeetMcpServer {
           ]
         };
       }
-      else if (toolName === 'add_space_members') {
-        const { space_name, member_emails, role = 'MEMBER' } = args;
+      else if (toolName === 'meet_add_cohosts') {
+        const { meeting_id, cohost_emails } = args;
         
-        if (!space_name || !member_emails || member_emails.length === 0) {
-          throw new McpError(ErrorCode.InvalidParams, 'space_name and member_emails are required');
+        if (!meeting_id || !cohost_emails || cohost_emails.length === 0) {
+          throw new McpError(ErrorCode.InvalidParams, 'meeting_id and cohost_emails are required');
         }
 
-        const members = await this.googleMeet.addMembersToSpace(space_name, member_emails, role);
+        // Get current meeting
+        const meeting = await this.googleMeet.getMeeting(meeting_id);
+        
+        // Update description with co-host information
+        const cohostInfo = `\\n\\n👥 Co-hosts assigned: ${cohost_emails.join(', ')} (promote manually in meeting)`;
+        const updatedDescription = (meeting.description || '') + cohostInfo;
+        
+        const updatedMeeting = await this.googleMeet.updateMeeting(meeting_id, {
+          description: updatedDescription
+        });
 
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(members, null, 2)
+              text: `Co-hosts documented in meeting description: ${cohost_emails.join(', ')}`
             }
           ]
         };
       }
-      else if (toolName === 'remove_space_member') {
+      else if (toolName === 'meet_remove_member') {
         const { member_name } = args;
         
         if (!member_name) {

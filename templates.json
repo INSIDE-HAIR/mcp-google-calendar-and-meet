@@ -137,13 +137,12 @@
       "attendees": ["nuevo_participante@empresa.com"]
     },
     
-    "add_space_members_template": {
-      "space_name": "spaces/SPACE_ID_AQUI",
-      "member_emails": [
+    "meet_add_cohosts_template": {
+      "meeting_id": "MEETING_ID_AQUI",
+      "cohost_emails": [
         "nuevo_cohost@empresa.com",
-        "otro_miembro@empresa.com"
-      ],
-      "role": "COHOST"
+        "otro_cohost@empresa.com"
+      ]
     }
   },
   
@@ -186,12 +185,12 @@
   },
   
   "quick_examples": {
-    "simple_meeting": "create_meeting({ summary: 'Reunión Rápida', start_time: '2025-02-01T10:00:00Z', end_time: '2025-02-01T11:00:00Z' })",
+    "simple_meeting": "calendar_create_meeting({ summary: 'Reunión Rápida', start_time: '2025-02-01T10:00:00Z', end_time: '2025-02-01T11:00:00Z' })",
     
-    "meeting_with_recording": "create_meeting({ summary: 'Reunión Grabada', start_time: '2025-02-01T10:00:00Z', end_time: '2025-02-01T11:00:00Z', enable_recording: true })",
+    "meeting_with_recording": "calendar_create_meeting({ summary: 'Reunión Grabada', start_time: '2025-02-01T10:00:00Z', end_time: '2025-02-01T11:00:00Z', enable_recording: true })",
     
-    "add_cohost": "add_space_members({ space_name: 'spaces/abc123', member_emails: ['cohost@empresa.com'], role: 'COHOST' })",
+    "add_cohost": "meet_add_cohosts({ meeting_id: 'abc123', cohost_emails: ['cohost@empresa.com'] })",
     
-    "moderated_meeting": "create_meeting({ summary: 'Reunión Moderada', start_time: '2025-02-01T10:00:00Z', end_time: '2025-02-01T11:00:00Z', space_config: { moderation_mode: 'ON', chat_restriction: 'HOSTS_ONLY' } })"
+    "moderated_meeting": "calendar_create_meeting({ summary: 'Reunión Moderada', start_time: '2025-02-01T10:00:00Z', end_time: '2025-02-01T11:00:00Z', space_config: { moderation_mode: 'ON', chat_restriction: 'HOSTS_ONLY' } })"
   }
 }
