@@ -10,6 +10,7 @@ Google Meet MCP Server v2.0 - An advanced Model Context Protocol (MCP) server th
 
 - **Start the server**: `npm run start`
 - **Initial setup (OAuth authentication)**: `npm run setup`
+- **Manual authentication with G_OAUTH_CREDENTIALS**: `G_OAUTH_CREDENTIALS="/path/to/credentials.json" npm run setup`
 - **Install dependencies**: `npm install`
 - **Test enhanced features**: `npm test`
 
@@ -45,15 +46,24 @@ The project uses ES modules (`"type": "module"` in package.json) and follows thi
 
 ### Authentication Flow
 
-The server requires Google OAuth2 credentials with enhanced scopes:
+The server requires Google OAuth2 credentials and supports two configuration methods:
+
+**Primary Method (Recommended for Claude Desktop):**
+1. Environment variable `G_OAUTH_CREDENTIALS` must be set to the path of credentials file
+2. Token will be automatically saved to `{credentials_file}.token.json`
+3. Initial setup: `G_OAUTH_CREDENTIALS="/path/to/credentials.json" npm run setup`
+
+**Legacy Method:**
 1. Environment variables `GOOGLE_MEET_CREDENTIALS_PATH` and `GOOGLE_MEET_TOKEN_PATH` must be set
 2. Initial setup via `npm run setup` to obtain OAuth tokens
-3. Tokens are persisted and automatically refreshed when expired
-4. Required scopes:
-   - `https://www.googleapis.com/auth/calendar` - Calendar management
-   - `https://www.googleapis.com/auth/meetings.space.created` - Create Meet spaces
-   - `https://www.googleapis.com/auth/meetings.space.readonly` - Read space information
-   - `https://www.googleapis.com/auth/meetings.space.settings` - Configure advanced features
+
+**Both methods:**
+- Tokens are persisted and automatically refreshed when expired
+- Required scopes:
+  - `https://www.googleapis.com/auth/calendar` - Calendar management
+  - `https://www.googleapis.com/auth/meetings.space.created` - Create Meet spaces
+  - `https://www.googleapis.com/auth/meetings.space.readonly` - Read space information
+  - `https://www.googleapis.com/auth/meetings.space.settings` - Configure advanced features
 
 ### MCP Protocol Implementation
 
@@ -144,9 +154,24 @@ await meet_v2beta_create_member({
 });
 ```
 
+## Environment Configuration
+
+Create a `.env` file in your project root or set environment variables:
+
+```bash
+# Primary configuration (recommended for Claude Desktop)
+G_OAUTH_CREDENTIALS="/path/to/your/credentials.json"
+
+# Alternative configuration for local development
+GOOGLE_MEET_CREDENTIALS_PATH="/path/to/your/credentials.json"
+GOOGLE_MEET_TOKEN_PATH="./token.json"
+```
+
 ## Important Notes
 
 - Google Meet API v2beta is not available in the googleapis library
 - Advanced features are implemented via fallback methods
 - Recording and transcription features are documented in meeting descriptions
 - Member management returns simulated data for compatibility
+- Use `G_OAUTH_CREDENTIALS` environment variable for simplified configuration
+- The token file is automatically created adjacent to the credentials file when using `G_OAUTH_CREDENTIALS`

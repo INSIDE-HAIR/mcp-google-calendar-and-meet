@@ -62,13 +62,23 @@ Before using the Google Meet MCP server, you need to set up your Google API cred
    - Google Meet API (for advanced features)
 4. Create OAuth 2.0 credentials (Desktop application)
 5. Download the credentials JSON file
-6. Set the environment variables with the paths to your credentials:
+6. Set the environment variable with the path to your credentials:
+   ```bash
+   export G_OAUTH_CREDENTIALS="/path/to/your/credentials.json"
+   ```
+   
+   **Alternative (for local development):**
    ```bash
    export GOOGLE_MEET_CREDENTIALS_PATH="/path/to/your/credentials.json"
    export GOOGLE_MEET_TOKEN_PATH="./token.json"
    ```
+
 7. Run the setup script to authenticate and generate the token:
    ```bash
+   # Using G_OAUTH_CREDENTIALS (recommended)
+   G_OAUTH_CREDENTIALS="/path/to/your/credentials.json" npm run setup
+   
+   # Or using legacy variables
    npm run setup
    ```
 
@@ -77,6 +87,19 @@ This will request authorization for the following scopes:
 - `https://www.googleapis.com/auth/meetings.space.created` - Create Meet spaces
 - `https://www.googleapis.com/auth/meetings.space.readonly` - Read space information
 - `https://www.googleapis.com/auth/meetings.space.settings` - Configure advanced features
+
+### Environment Configuration
+
+Create a `.env` file in your project root or set environment variables:
+
+```bash
+# Primary configuration (recommended)
+G_OAUTH_CREDENTIALS="/path/to/your/credentials.json"
+
+# Alternative configuration for local development
+GOOGLE_MEET_CREDENTIALS_PATH="/path/to/your/credentials.json"
+GOOGLE_MEET_TOKEN_PATH="./token.json"
+```
 
 ### Automatic Authentication (MCP/Claude Desktop)
 
@@ -89,6 +112,14 @@ When using this server through Claude Desktop or other MCP clients, the server w
    - Continue with normal operation
 
 2. **Subsequent runs**: The server will use the saved token and refresh it automatically when needed.
+
+### Manual Setup Command
+
+If you need to re-authenticate or set up credentials manually:
+
+```bash
+G_OAUTH_CREDENTIALS="/path/to/your/credentials.json" npm run setup
+```
 
 ## Usage
 
@@ -314,6 +345,22 @@ To use this server with MCP-compatible systems, add the following to your MCP se
       "command": "node",
       "args": ["path/to/mcp-google-meet/src/index.js"],
       "env": {
+        "G_OAUTH_CREDENTIALS": "/path/to/your/credentials.json"
+      },
+      "disabled": false
+    }
+  }
+}
+```
+
+**Alternative configuration (legacy):**
+```json
+{
+  "mcpServers": {
+    "google-meet": {
+      "command": "node",
+      "args": ["path/to/mcp-google-meet/src/index.js"],
+      "env": {
         "GOOGLE_MEET_CREDENTIALS_PATH": "/path/to/your/credentials.json",
         "GOOGLE_MEET_TOKEN_PATH": "/path/to/your/token.json"
       },
@@ -360,7 +407,13 @@ You can also run this MCP server using Docker:
 # Build the Docker image
 docker build -t google-meet-mcp .
 
-# Run the container with credentials mounted
+# Run the container with credentials mounted (recommended)
+docker run -it \
+  -v /path/to/credentials.json:/app/credentials.json \
+  -e G_OAUTH_CREDENTIALS=/app/credentials.json \
+  google-meet-mcp
+
+# Alternative with separate token file
 docker run -it \
   -v /path/to/credentials.json:/app/credentials.json \
   -v /path/to/token.json:/app/token.json \

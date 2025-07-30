@@ -593,6 +593,130 @@ class GoogleMeetMcpServer {
             required: ["member_name"],
           },
         },
+
+        // Additional Google Meet API v2 Tools (From Official Specs)
+        {
+          name: "meet_v2_delete_space",
+          description:
+            "[Meet API v2 GA] Delete a Google Meet space",
+          inputSchema: {
+            type: "object",
+            properties: {
+              space_name: {
+                type: "string",
+                description: "Name of the space (spaces/{space_id})",
+              },
+            },
+            required: ["space_name"],
+          },
+        },
+        {
+          name: "meet_v2_get_participant",
+          description:
+            "[Meet API v2 GA] Get details of a specific participant",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participant_name: {
+                type: "string",
+                description:
+                  "Name of the participant (conferenceRecords/{record_id}/participants/{participant_id})",
+              },
+            },
+            required: ["participant_name"],
+          },
+        },
+        {
+          name: "meet_v2_list_participants",
+          description:
+            "[Meet API v2 GA] List participants for a conference record",
+          inputSchema: {
+            type: "object",
+            properties: {
+              conference_record_name: {
+                type: "string",
+                description:
+                  "Name of the conference record (conferenceRecords/{record_id})",
+              },
+              page_size: {
+                type: "number",
+                description:
+                  "Maximum number of participants to return (default: 10, max: 100)",
+              },
+            },
+            required: ["conference_record_name"],
+          },
+        },
+        {
+          name: "meet_v2_get_participant_session",
+          description:
+            "[Meet API v2 GA] Get details of a specific participant session",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participant_session_name: {
+                type: "string",
+                description:
+                  "Name of the participant session (conferenceRecords/{record_id}/participants/{participant_id}/sessions/{session_id})",
+              },
+            },
+            required: ["participant_session_name"],
+          },
+        },
+        {
+          name: "meet_v2_list_participant_sessions",
+          description:
+            "[Meet API v2 GA] List sessions for a specific participant",
+          inputSchema: {
+            type: "object",
+            properties: {
+              participant_name: {
+                type: "string",
+                description:
+                  "Name of the participant (conferenceRecords/{record_id}/participants/{participant_id})",
+              },
+              page_size: {
+                type: "number",
+                description:
+                  "Maximum number of sessions to return (default: 10, max: 100)",
+              },
+            },
+            required: ["participant_name"],
+          },
+        },
+        {
+          name: "meet_v2_get_transcript_entry",
+          description:
+            "[Meet API v2 GA] Get details of a specific transcript entry",
+          inputSchema: {
+            type: "object",
+            properties: {
+              transcript_entry_name: {
+                type: "string",
+                description:
+                  "Name of the transcript entry (conferenceRecords/{record_id}/transcripts/{transcript_id}/entries/{entry_id})",
+              },
+            },
+            required: ["transcript_entry_name"],
+          },
+        },
+
+        // Additional Google Meet API v2beta Tools (From Official Specs)
+        {
+          name: "meet_v2beta_connect_active_conference",
+          description:
+            "[Meet API v2beta] Connect to the active conference in a Google Meet space (WebRTC)",
+          inputSchema: {
+            type: "object",
+            properties: {
+              space_name: {
+                type: "string",
+                description: "Name of the space (spaces/{space_id})",
+              },
+            },
+            required: ["space_name"],
+          },
+        },
       ],
     };
   }
@@ -1118,6 +1242,136 @@ class GoogleMeetMcpServer {
               text: result
                 ? "Member successfully removed"
                 : "Failed to remove member",
+            },
+          ],
+        };
+      } 
+
+      // Additional Google Meet API v2 Tools (From Official Specs)
+      else if (toolName === "meet_v2_delete_space") {
+        const { space_name } = args;
+
+        if (!space_name) {
+          throw new McpError(ErrorCode.InvalidParams, "space_name is required");
+        }
+
+        const result = await this.googleMeet.deleteSpace(space_name);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: result
+                ? "Space successfully deleted"
+                : "Failed to delete space",
+            },
+          ],
+        };
+      } else if (toolName === "meet_v2_get_participant") {
+        const { participant_name } = args;
+
+        if (!participant_name) {
+          throw new McpError(ErrorCode.InvalidParams, "participant_name is required");
+        }
+
+        const participant = await this.googleMeet.getParticipant(participant_name);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(participant, null, 2),
+            },
+          ],
+        };
+      } else if (toolName === "meet_v2_list_participants") {
+        const { conference_record_name, page_size = 10 } = args;
+
+        if (!conference_record_name) {
+          throw new McpError(ErrorCode.InvalidParams, "conference_record_name is required");
+        }
+
+        const participants = await this.googleMeet.listParticipants(
+          conference_record_name,
+          page_size
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(participants, null, 2),
+            },
+          ],
+        };
+      } else if (toolName === "meet_v2_get_participant_session") {
+        const { participant_session_name } = args;
+
+        if (!participant_session_name) {
+          throw new McpError(ErrorCode.InvalidParams, "participant_session_name is required");
+        }
+
+        const session = await this.googleMeet.getParticipantSession(participant_session_name);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(session, null, 2),
+            },
+          ],
+        };
+      } else if (toolName === "meet_v2_list_participant_sessions") {
+        const { participant_name, page_size = 10 } = args;
+
+        if (!participant_name) {
+          throw new McpError(ErrorCode.InvalidParams, "participant_name is required");
+        }
+
+        const sessions = await this.googleMeet.listParticipantSessions(
+          participant_name,
+          page_size
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(sessions, null, 2),
+            },
+          ],
+        };
+      } else if (toolName === "meet_v2_get_transcript_entry") {
+        const { transcript_entry_name } = args;
+
+        if (!transcript_entry_name) {
+          throw new McpError(ErrorCode.InvalidParams, "transcript_entry_name is required");
+        }
+
+        const entry = await this.googleMeet.getTranscriptEntry(transcript_entry_name);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(entry, null, 2),
+            },
+          ],
+        };
+      } else if (toolName === "meet_v2beta_connect_active_conference") {
+        const { space_name } = args;
+
+        if (!space_name) {
+          throw new McpError(ErrorCode.InvalidParams, "space_name is required");
+        }
+
+        const connection = await this.googleMeet.connectActiveConference(space_name);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(connection, null, 2),
             },
           ],
         };
