@@ -1,10 +1,9 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
-# Google Meet MCP Server - Create and manage Google Meet meetings with recording support
+# Google Meet MCP Server v2.0 - Advanced enterprise-grade MCP server for Google Meet and Calendar APIs
 
 startCommand:
   type: stdio
   configSchema:
-    # JSON Schema defining the configuration options for the MCP.
     type: object
     anyOf:
       - required: [googleOAuthCredentials]
@@ -12,18 +11,20 @@ startCommand:
     properties:
       googleOAuthCredentials:
         type: string
-        description: Path to Google OAuth 2.0 credentials file (simplified config - token stored alongside).
+        title: "Google OAuth Credentials (Recommended)"
+        description: "Path to Google OAuth 2.0 credentials JSON file. Token will be automatically saved alongside."
+        examples: ["/path/to/credentials.json", "./client_secret.json"]
       googleMeetCredentialsPath:
         type: string
-        default: credentials.json
-        description: Path to Google OAuth 2.0 credentials file (advanced config).
+        default: "credentials.json"
+        title: "Credentials Path (Advanced)"
+        description: "Path to Google OAuth 2.0 credentials file for advanced configuration."
       googleMeetTokenPath:
         type: string
-        default: token.json
-        description: Path to store/read the authentication token (advanced config).
-  commandFunction:
-    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
-    |-
+        default: "token.json"
+        title: "Token Path (Advanced)" 
+        description: "Path to store/read the authentication token for advanced configuration."
+  commandFunction: |
     (config) => {
       const env = {};
       if (config.googleOAuthCredentials) {
@@ -39,47 +40,142 @@ startCommand:
       };
     }
   exampleConfig:
-    # Simplified configuration (recommended)
-    googleOAuthCredentials: /path/to/your/credentials.json
-    # Alternative: Advanced configuration
-    # googleMeetCredentialsPath: credentials.json
-    # googleMeetTokenPath: token.json
+    # Simplified configuration (recommended for most users)
+    googleOAuthCredentials: "/Users/username/credentials.json"
+    
+    # Advanced configuration (for custom token management)
+    # googleMeetCredentialsPath: "credentials.json"
+    # googleMeetTokenPath: "token.json"
 
-# Metadata for Smithery registry
+# Smithery registry metadata
 name: google-meet-mcp-server
-description: MCP server for creating and managing Google Meet meetings with recording capabilities
-version: 1.0.0
+displayName: "Google Meet MCP Server v2.0"
+description: "Advanced enterprise MCP server providing 17 production-ready tools for Google Calendar API v3 and Google Meet API v2 with comprehensive meeting management, recording, transcription, and space configuration capabilities"
+version: 2.0.0
 author: INSIDE-HAIR
-repository: https://github.com/INSIDE-HAIR/mcp-google-meet
+maintainer: INSIDE-HAIR
+repository: https://github.com/INSIDE-HAIR/google-meet-mcp-server
+homepage: https://github.com/INSIDE-HAIR/google-meet-mcp-server
 license: ISC
+category: productivity
+
 keywords:
   - google-meet
-  - calendar
-  - meeting
+  - google-calendar
+  - meeting-management
+  - video-conferencing
   - recording
+  - transcription
   - mcp
   - model-context-protocol
   - google-workspace
-  - video-conferencing
+  - enterprise
+  - api-v2
+  - oauth2
 
-# Available tools
+# Complete tool inventory (17 production-ready tools)
 tools:
-  - name: list_meetings
-    description: List upcoming Google Meet meetings
-  - name: get_meeting
-    description: Get details of a specific meeting
-  - name: create_meeting
-    description: Create a new meeting with optional recording
-  - name: update_meeting
-    description: Update an existing meeting
-  - name: delete_meeting
-    description: Delete a meeting
-  - name: get_meeting_recordings
-    description: Get recording information (requires Google Workspace)
+  # Google Calendar API v3 Tools (5 tools)
+  - name: calendar_v3_list_events
+    description: "List calendar events with optional Google Meet links and guest permissions"
+    category: calendar
+  - name: calendar_v3_get_event
+    description: "Get detailed event information including guest permissions and Meet conference data"
+    category: calendar
+  - name: calendar_v3_create_event
+    description: "Create calendar events with Google Meet conferences and configurable guest permissions"
+    category: calendar
+  - name: calendar_v3_update_event
+    description: "Update calendar events including guest permissions and Meet settings"
+    category: calendar
+  - name: calendar_v3_delete_event
+    description: "Delete calendar events and associated Meet conferences"
+    category: calendar
 
-# Requirements
+  # Google Meet API v2 Tools - Space Management (4 tools)
+  - name: meet_v2_create_space
+    description: "Create Google Meet spaces with advanced configuration (access types, moderation, artifacts)"
+    category: meet-spaces
+  - name: meet_v2_get_space
+    description: "Get comprehensive details of Google Meet spaces including configuration and active conferences"
+    category: meet-spaces
+  - name: meet_v2_update_space
+    description: "Update Google Meet space configuration including moderation and access settings"
+    category: meet-spaces
+  - name: meet_v2_end_active_conference
+    description: "End active conferences in Google Meet spaces programmatically"
+    category: meet-spaces
+
+  # Google Meet API v2 Tools - Conference Records (2 tools)
+  - name: meet_v2_list_conference_records
+    description: "List historical conference records with filtering and pagination"
+    category: conference-records
+  - name: meet_v2_get_conference_record
+    description: "Get detailed information about specific conference records"
+    category: conference-records
+
+  # Google Meet API v2 Tools - Recordings (2 tools)
+  - name: meet_v2_list_recordings
+    description: "List conference recordings with Drive export information"
+    category: recordings
+  - name: meet_v2_get_recording
+    description: "Get detailed recording information including download links and metadata"
+    category: recordings
+
+  # Google Meet API v2 Tools - Transcripts (3 tools)
+  - name: meet_v2_list_transcripts
+    description: "List conference transcripts with Google Docs export information"
+    category: transcripts
+  - name: meet_v2_get_transcript
+    description: "Get detailed transcript information including document links"
+    category: transcripts
+  - name: meet_v2_list_transcript_entries
+    description: "List individual speech segments from transcripts with speaker identification"
+    category: transcripts
+
+  # Google Meet API v2 Tools - Participants (1 tool)
+  - name: meet_v2_get_participant
+    description: "Get participant details from conference records"
+    category: participants
+
+# System requirements and capabilities
 requirements:
-  - Google Cloud project with Calendar API and Meet API enabled
-  - OAuth 2.0 credentials (Desktop application type)
-  - Node.js 16 or higher
-  - For recording features - Google Workspace Business Standard or higher
+  runtime: node
+  nodeVersion: ">=18.0.0"
+  dependencies:
+    - "@modelcontextprotocol/sdk"
+    - "googleapis"
+    - "open"
+  apis:
+    - name: "Google Calendar API v3"
+      required: true
+      scopes: ["https://www.googleapis.com/auth/calendar"]
+    - name: "Google Meet API v2" 
+      required: true
+      scopes: 
+        - "https://www.googleapis.com/auth/meetings.space.created"
+        - "https://www.googleapis.com/auth/meetings.space.readonly"
+        - "https://www.googleapis.com/auth/meetings.space.settings"
+  
+  prerequisites:
+    - "Google Cloud Project with Calendar API and Meet API enabled"
+    - "OAuth 2.0 Desktop Application credentials"
+    - "Google Workspace account (Business Standard+ for advanced features)"
+
+# Enhanced features and capabilities
+features:
+  - "17 production-ready tools (v2beta removed for stability)"
+  - "Comprehensive Google Calendar management with guest permissions"
+  - "Advanced Google Meet space configuration (access types, moderation)"
+  - "Recording and transcription artifact management"
+  - "Conference record and participant tracking"
+  - "Enterprise-grade security and authentication"
+  - "Automatic token refresh and persistence"
+  - "Full TypeScript definitions included"
+  - "Docker containerization support"
+
+# Support and documentation
+support:
+  documentation: "https://github.com/INSIDE-HAIR/google-meet-mcp-server/blob/main/README.md"
+  issues: "https://github.com/INSIDE-HAIR/google-meet-mcp-server/issues"
+  setup: "https://github.com/INSIDE-HAIR/google-meet-mcp-server/blob/main/CLAUDE.md"
