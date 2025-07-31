@@ -1,7 +1,57 @@
+# OAuth Credentials and Tokens (NEVER COMMIT THESE)
 token.json
 credentials.json
 credentials.token.json
 *.token.json
+client_secret*.json
+oauth-credentials*.json
+
+# Local environment files
+.env.local
+.env.production
+.env
+
+# Dependencies
 node_modules/
-env/
-package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime
+logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and testing
+coverage/
+.nyc_output/
+lib-cov/
+
+# IDE and OS files  
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+out/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Backup files
+*.backup
+*.bak
+*~
