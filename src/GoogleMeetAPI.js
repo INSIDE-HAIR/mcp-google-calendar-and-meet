@@ -49,16 +49,21 @@ class MeetRestClient {
     const baseUrl = this.baseUrls[apiVersion];
     
     // Ensure GET method is explicitly set for read operations when not specified
+    const method = options.method || 'GET';
     const requestOptions = {
-      method: 'GET',  // Default to GET for all read operations
+      method: method,
       ...options,
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
         ...options.headers
       }
     };
+    
+    // Only add Content-Type for requests with body (POST, PATCH, PUT)
+    if (['POST', 'PATCH', 'PUT'].includes(method) && options.body) {
+      requestOptions.headers['Content-Type'] = 'application/json';
+    }
     
     const response = await fetch(`${baseUrl}${endpoint}`, requestOptions);
 
@@ -99,8 +104,19 @@ class MeetRestClient {
    * Get space details
    */
   async getSpace(spaceName) {
+    // Validate and format space name
+    if (!spaceName || typeof spaceName !== 'string') {
+      throw new Error('Invalid space name: must be a non-empty string');
+    }
+    
     // Ensure spaceName is properly formatted (spaces/{space_id})
     const formattedSpaceName = spaceName.startsWith('spaces/') ? spaceName : `spaces/${spaceName}`;
+    
+    // Validate the formatted name (spaces/{space_id} or spaces/{meetingCode})
+    if (!formattedSpaceName.match(/^spaces\/[a-zA-Z0-9_-]{1,128}$/)) {
+      throw new Error(`Invalid space name format: ${formattedSpaceName}. Expected: spaces/{space_id} or spaces/{meetingCode}`);
+    }
+    
     return this.makeRequest(`/${formattedSpaceName}`);
   }
 
