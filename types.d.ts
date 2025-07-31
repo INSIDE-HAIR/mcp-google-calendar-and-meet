@@ -70,27 +70,26 @@ export interface Space {
 
 export interface SpaceConfig {
   accessType?: "OPEN" | "TRUSTED" | "RESTRICTED";
-  moderation?: {
-    mode: "ON" | "OFF";
-  };
+  entryPointAccess?: "ALL" | "CREATOR_APP_ONLY";
+  moderation?: "OFF" | "ON";
   moderationRestrictions?: {
     chatRestriction?: "HOSTS_ONLY" | "NO_RESTRICTION";
+    reactionRestriction?: "HOSTS_ONLY" | "NO_RESTRICTION";
     presentRestriction?: "HOSTS_ONLY" | "NO_RESTRICTION";
-    defaultRoleAssignmentRestriction?: "VIEWER_ONLY" | "CONTRIBUTOR_ONLY";
+    defaultJoinAsViewerType?: "ON" | "OFF";
   };
-  entryPointAccess?: "ALL" | "PHONE_ONLY";
+  attendanceReportGenerationType?: "GENERATE_REPORT" | "DO_NOT_GENERATE";
   artifactConfig?: {
     recordingConfig?: {
-      autoGenerationType: "ON" | "OFF";
+      autoRecordingGeneration: "ON" | "OFF";
     };
     transcriptionConfig?: {
-      autoGenerationType: "ON" | "OFF";
+      autoTranscriptionGeneration: "ON" | "OFF";
     };
     smartNotesConfig?: {
-      autoGenerationType: "ON" | "OFF";
+      autoSmartNotesGeneration: "ON" | "OFF";
     };
   };
-  attendanceReportGenerationType?: "ON" | "OFF";
 }
 
 export interface ConferenceRecord {
@@ -107,7 +106,7 @@ export interface Recording {
     file: string;
     exportUri: string;
   };
-  state: "STARTED" | "ENDED" | "FILE_GENERATED";
+  state: RecordingState;
   startTime: string;
   endTime: string;
 }
@@ -118,7 +117,7 @@ export interface Transcript {
     document: string;
     exportUri: string;
   };
-  state: "STARTED" | "ENDED" | "FILE_GENERATED";
+  state: TranscriptState;
   startTime: string;
   endTime: string;
 }
@@ -136,9 +135,9 @@ export interface TranscriptEntry {
 
 export interface Member {
   name: string; // "spaces/{space}/members/{member}"
-  email: string;
-  role: "HOST" | "COHOST" | "MEMBER" | "VIEWER";
+  role: MemberRole;
   user?: {
+    email: string;
     displayName?: string;
     avatar?: string;
     type?: "HUMAN" | "SERVICE_ACCOUNT";
@@ -149,12 +148,14 @@ export interface Member {
 
 export interface CreateSpaceParams {
   access_type?: "OPEN" | "TRUSTED" | "RESTRICTED";
+  entry_point_access?: "ALL" | "CREATOR_APP_ONLY";
   enable_recording?: boolean;
   enable_transcription?: boolean;
   enable_smart_notes?: boolean;
   attendance_report?: boolean;
   moderation_mode?: "ON" | "OFF";
   chat_restriction?: "HOSTS_ONLY" | "NO_RESTRICTION";
+  reaction_restriction?: "HOSTS_ONLY" | "NO_RESTRICTION";
   present_restriction?: "HOSTS_ONLY" | "NO_RESTRICTION";
   default_join_as_viewer?: boolean;
 }
@@ -214,6 +215,19 @@ export interface MCPToolSchema {
     required: string[];
   };
 }
+
+// ========== ENUM TYPES ==========
+
+export type AccessType = "OPEN" | "TRUSTED" | "RESTRICTED";
+export type EntryPointAccess = "ALL" | "CREATOR_APP_ONLY";
+export type Moderation = "OFF" | "ON";
+export type RestrictionType = "HOSTS_ONLY" | "NO_RESTRICTION";
+export type DefaultJoinAsViewerType = "ON" | "OFF";
+export type AttendanceReportGenerationType = "GENERATE_REPORT" | "DO_NOT_GENERATE";
+export type AutoGenerationType = "ON" | "OFF";
+export type MemberRole = "HOST" | "COHOST" | "MEMBER" | "VIEWER";
+export type RecordingState = "STARTED" | "ENDED" | "FILE_GENERATED";
+export type TranscriptState = "STARTED" | "ENDED" | "FILE_GENERATED";
 
 // ========== OAUTH SCOPES ==========
 

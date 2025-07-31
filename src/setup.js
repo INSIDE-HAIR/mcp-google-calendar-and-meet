@@ -131,6 +131,18 @@ async function main() {
     console.log("Opening browser for authentication...");
     await open(authUrl);
 
+    // Also open the OAuth code extractor helper page
+    const extractorPath = path.join(process.cwd(), "index.html");
+    try {
+      await fs.access(extractorPath);
+      console.log("Opening OAuth code extractor helper...");
+      await open(`file://${extractorPath}`);
+      console.log("💡 Use the OAuth Code Extractor page to easily copy your authorization code!");
+    } catch (error) {
+      // Extractor page doesn't exist, continue without it
+      console.log("📝 OAuth code extractor not found - please manually copy the code from the URL");
+    }
+
     // Wait for user input
     const authCode = await question(
       "\nEnter the authorization code from the URL: "

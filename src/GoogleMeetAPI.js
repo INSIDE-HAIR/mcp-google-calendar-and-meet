@@ -24,8 +24,8 @@ class MeetRestClient {
     
     // Feature flags for experimental/beta features
     this.featureFlags = {
-      enableV2BetaFeatures: false,  // Set to false - beta methods disabled
-      enableExperimentalWebRTC: false
+      enableV2BetaFeatures: true,  // Enable v2beta features (Member management)
+      enableExperimentalWebRTC: true
     };
   }
 
@@ -99,7 +99,9 @@ class MeetRestClient {
    * Get space details
    */
   async getSpace(spaceName) {
-    return this.makeRequest(`/${spaceName}`);
+    // Ensure spaceName is properly formatted (spaces/{space_id})
+    const formattedSpaceName = spaceName.startsWith('spaces/') ? spaceName : `spaces/${spaceName}`;
+    return this.makeRequest(`/${formattedSpaceName}`);
   }
 
   /**
@@ -193,14 +195,15 @@ class MeetRestClient {
       throw new Error('v2beta features are disabled. Set enableV2BetaFeatures to true to enable experimental features.');
     }
     
+    // The request body should be the member object directly, not wrapped
     const requestBody = {
-      member: {
-        role: role.toUpperCase(),
-        user: { email: userEmail }
-      }
+      role: role.toUpperCase(),
+      email: userEmail
     };
     
-    return this.makeRequest(`/${spaceName}/members`, {
+    // Ensure spaceName is properly formatted (spaces/{space_id})
+    const formattedSpaceName = spaceName.startsWith('spaces/') ? spaceName : `spaces/${spaceName}`;
+    return this.makeRequest(`/${formattedSpaceName}/members`, {
       method: 'POST',
       body: JSON.stringify(requestBody)
     }, 'v2beta');
@@ -217,7 +220,9 @@ class MeetRestClient {
     const params = new URLSearchParams();
     if (pageSize) params.append('pageSize', pageSize.toString());
     
-    const endpoint = `/${spaceName}/members?${params.toString()}`;
+    // Ensure spaceName is properly formatted (spaces/{space_id})
+    const formattedSpaceName = spaceName.startsWith('spaces/') ? spaceName : `spaces/${spaceName}`;
+    const endpoint = `/${formattedSpaceName}/members?${params.toString()}`;
     return this.makeRequest(endpoint, {}, 'v2beta');
   }
 
@@ -229,7 +234,9 @@ class MeetRestClient {
       throw new Error('v2beta features are disabled. Set enableV2BetaFeatures to true to enable experimental features.');
     }
     
-    return this.makeRequest(`/${memberName}`, {}, 'v2beta');
+    // Ensure memberName is properly formatted (spaces/{space}/members/{member})
+    const formattedMemberName = memberName.includes('/members/') ? memberName : `spaces/${memberName}`;
+    return this.makeRequest(`/${formattedMemberName}`, {}, 'v2beta');
   }
 
   /**
@@ -240,7 +247,9 @@ class MeetRestClient {
       throw new Error('v2beta features are disabled. Set enableV2BetaFeatures to true to enable experimental features.');
     }
     
-    return this.makeRequest(`/${memberName}`, {
+    // Ensure memberName is properly formatted (spaces/{space}/members/{member})
+    const formattedMemberName = memberName.includes('/members/') ? memberName : `spaces/${memberName}`;
+    return this.makeRequest(`/${formattedMemberName}`, {
       method: 'DELETE'
     }, 'v2beta');
   }
@@ -1035,24 +1044,22 @@ class GoogleMeetAPI {
 
   /**
    * Create a Google Meet space with advanced configuration.
-   * Note: Fallback implementation using Calendar API descriptions since Meet API v2beta is not available
    * @param {Object} config - Space configuration
-   * @returns {Promise<Object>} - Simulated space data
+   * @returns {Promise<Object>} - Created space data
    */
   async createMeetSpace(config) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      const spaceConfig = {
-        accessType: config.accessType || 'TRUSTED',
-        entryPointAccess: 'ALL'
-      };
+    // Use REST client for direct Google Meet API v2 access
+    const spaceConfig = {
+      accessType: config.accessType || 'TRUSTED',
+      entryPointAccess: 'ALL'
+    };
 
-      // Add moderation configuration if specified
-      if (config.moderationMode || config.chatRestriction || config.presentRestriction || config.defaultJoinAsViewer) {
-        spaceConfig.moderation = {
-          mode: config.moderationMode || 'OFF'
-        };
-        
+    // Add moderation configuration if specified
+    if (config.moderationMode) {
+      spaceConfig.moderation = config.moderationMode;
+      
+      // Only add moderationRestrictions if moderation is ON
+      if (config.moderationMode === 'ON' && (config.chatRestriction || config.presentRestriction || config.defaultJoinAsViewer)) {
         spaceConfig.moderationRestrictions = {};
         if (config.chatRestriction) {
           spaceConfig.moderationRestrictions.chatRestriction = config.chatRestriction;
@@ -1061,357 +1068,203 @@ class GoogleMeetAPI {
           spaceConfig.moderationRestrictions.presentRestriction = config.presentRestriction;
         }
         if (config.defaultJoinAsViewer) {
-          spaceConfig.moderationRestrictions.defaultRoleAssignmentRestriction = 'VIEWER_ONLY';
+          spaceConfig.moderationRestrictions.defaultJoinAsViewerType = 'ON';
         }
       }
-
-      // Add artifact configuration (recording, transcription, smart notes)
-      if (config.enableRecording || config.enableTranscription || config.enableSmartNotes) {
-        spaceConfig.artifactConfig = {};
-        
-        if (config.enableRecording) {
-          spaceConfig.artifactConfig.recordingConfig = {
-            autoGenerationType: 'ON'
-          };
-        }
-        
-        if (config.enableTranscription) {
-          spaceConfig.artifactConfig.transcriptionConfig = {
-            autoGenerationType: 'ON'
-          };
-        }
-        
-        if (config.enableSmartNotes) {
-          spaceConfig.artifactConfig.smartNotesConfig = {
-            autoGenerationType: 'ON'
-          };
-        }
-      }
-
-      // Add attendance report configuration
-      if (config.attendanceReport) {
-        spaceConfig.attendanceReportGenerationType = 'ON';
-      }
-
-      return await this.meetRestClient.createSpace(spaceConfig);
-    } catch (error) {
-      // Fallback to simulated response if REST API fails
-      console.warn(`Meet API v2 failed, using fallback: ${error.message}`);
-      
-      const spaceId = `space_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      return {
-        name: `spaces/${spaceId}`,
-        meetingUri: null,
-        config: {
-          accessType: config.accessType || 'TRUSTED',
-          enableRecording: config.enableRecording || false,
-          enableTranscription: config.enableTranscription || false,
-          enableSmartNotes: config.enableSmartNotes || false,
-          attendanceReport: config.attendanceReport || false,
-          moderationMode: config.moderationMode || 'OFF',
-          fallbackMode: true
-        }
-      };
     }
+
+    // Add artifact configuration (recording, transcription, smart notes)
+    if (config.enableRecording || config.enableTranscription || config.enableSmartNotes) {
+      spaceConfig.artifactConfig = {};
+      
+      if (config.enableRecording) {
+        spaceConfig.artifactConfig.recordingConfig = {
+          autoRecordingGeneration: 'ON'
+        };
+      }
+      
+      if (config.enableTranscription) {
+        spaceConfig.artifactConfig.transcriptionConfig = {
+          autoTranscriptionGeneration: 'ON'
+        };
+      }
+      
+      if (config.enableSmartNotes) {
+        spaceConfig.artifactConfig.smartNotesConfig = {
+          autoSmartNotesGeneration: 'ON'
+        };
+      }
+    }
+
+    // Add attendance report configuration
+    if (config.attendanceReport) {
+      spaceConfig.attendanceReportGenerationType = 'GENERATE_REPORT';
+    }
+
+    return await this.meetRestClient.createSpace(spaceConfig);
   }
 
   /**
    * Get details of a Google Meet space.
-   * Note: Fallback implementation - returns simulated space data
    * @param {string} spaceName - Name of the space (spaces/{space_id})
-   * @returns {Promise<Object>} - Simulated space data
+   * @returns {Promise<Object>} - Space data from Google Meet API v2
    */
   async getMeetSpace(spaceName) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      return await this.meetRestClient.getSpace(spaceName);
-    } catch (error) {
-      // Fallback to simulated response if REST API fails
-      console.warn(`Meet API v2 failed for getMeetSpace, using fallback: ${error.message}`);
-      return {
-        name: spaceName,
-        meetingUri: `https://meet.google.com/abc-defg-hij`,
-        config: {
-          accessType: "TRUSTED",
-          moderation: { mode: "OFF" },
-          artifactConfig: {
-            recordingConfig: { autoGenerationType: "OFF" },
-            transcriptionConfig: { autoGenerationType: "OFF" },
-            smartNotesConfig: { autoGenerationType: "OFF" },
-          },
-        },
-        fallbackMode: true
-      };
-    }
+    // Use REST client for direct Google Meet API v2 access
+    return await this.meetRestClient.getSpace(spaceName);
   }
 
   /**
    * Update configuration of a Google Meet space.
-   * Note: Fallback implementation - logs update request
    * @param {string} spaceName - Name of the space (spaces/{space_id})
    * @param {Object} updateData - Configuration to update
    * @returns {Promise<Object>} - Updated space data
    */
   async updateMeetSpace(spaceName, updateData) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      const spaceConfig = {};
-      
-      if (updateData.accessType) {
-        spaceConfig.accessType = updateData.accessType;
-      }
-      
-      if (updateData.moderationMode || updateData.chatRestriction || updateData.presentRestriction) {
-        spaceConfig.moderation = {
-          mode: updateData.moderationMode || 'OFF'
-        };
-        
-        spaceConfig.moderationRestrictions = {};
-        if (updateData.chatRestriction) {
-          spaceConfig.moderationRestrictions.chatRestriction = updateData.chatRestriction;
-        }
-        if (updateData.presentRestriction) {
-          spaceConfig.moderationRestrictions.presentRestriction = updateData.presentRestriction;
-        }
-      }
-      
-      return await this.meetRestClient.updateSpace(spaceName, spaceConfig);
-    } catch (error) {
-      // Fallback to simulated response if REST API fails
-      console.warn(`Meet API v2 failed for updateMeetSpace, using fallback: ${error.message}`);
-      return {
-        name: spaceName,
-        meetingUri: `https://meet.google.com/abc-defg-hij`,
-        config: {
-          accessType: updateData.accessType || "TRUSTED",
-          moderation: { mode: updateData.moderationMode || "OFF" },
-          moderationRestrictions: {
-            chatRestriction: updateData.chatRestriction || "NO_RESTRICTION",
-            presentRestriction: updateData.presentRestriction || "NO_RESTRICTION",
-          },
-        },
-        fallbackMode: true
-      };
+    // Use REST client for direct Google Meet API v2 access
+    const spaceConfig = {};
+    
+    if (updateData.accessType) {
+      spaceConfig.accessType = updateData.accessType;
     }
+    
+    if (updateData.moderationMode || updateData.chatRestriction || updateData.presentRestriction) {
+      spaceConfig.moderation = updateData.moderationMode || 'OFF';
+      
+      spaceConfig.moderationRestrictions = {};
+      if (updateData.chatRestriction) {
+        spaceConfig.moderationRestrictions.chatRestriction = updateData.chatRestriction;
+      }
+      if (updateData.presentRestriction) {
+        spaceConfig.moderationRestrictions.presentRestriction = updateData.presentRestriction;
+      }
+    }
+    
+    return await this.meetRestClient.updateSpace(spaceName, spaceConfig);
   }
 
   /**
    * End the active conference in a Google Meet space.
-   * Note: Fallback implementation - feature not available
    * @param {string} spaceName - Name of the space (spaces/{space_id})
-   * @returns {Promise<boolean>} - Always false (fallback)
+   * @returns {Promise<boolean>} - Success status
    */
   async endActiveConference(spaceName) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      await this.meetRestClient.endActiveConference(spaceName);
-      return true;
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2 failed for endActiveConference, using fallback: ${error.message}`);
-      return false;
-    }
+    // Use REST client for direct Google Meet API v2 access
+    await this.meetRestClient.endActiveConference(spaceName);
+    return true;
   }
 
   /**
    * List conference records for historical meetings.
-   * Note: Fallback implementation - returns empty list
    * @param {string} filter - Filter for conference records
    * @param {number} pageSize - Maximum number of results to return
-   * @returns {Promise<Array>} - Empty list (fallback)
+   * @returns {Promise<Array>} - Conference records
    */
   async listConferenceRecords(filter = null, pageSize = 10) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      return await this.meetRestClient.listConferenceRecords(filter, pageSize);
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2 failed for listConferenceRecords, using fallback: ${error.message}`);
-      return { conferenceRecords: [], nextPageToken: null };
-    }
+    // Use REST client for direct Google Meet API v2 access
+    return await this.meetRestClient.listConferenceRecords(filter, pageSize);
   }
 
   /**
    * Get details of a specific conference record.
-   * Note: Fallback implementation - feature not available
    * @param {string} conferenceRecordName - Name of the conference record
-   * @returns {Promise<Object>} - Error message
+   * @returns {Promise<Object>} - Conference record details
    */
   async getConferenceRecord(conferenceRecordName) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      return await this.meetRestClient.getConferenceRecord(conferenceRecordName);
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2 failed for getConferenceRecord, using fallback: ${error.message}`);
-      throw new Error(`Conference record not found: ${error.message}`);
-    }
+    // Use REST client for direct Google Meet API v2 access
+    return await this.meetRestClient.getConferenceRecord(conferenceRecordName);
   }
 
   /**
    * List recordings for a conference record.
-   * Note: Fallback implementation - returns empty list
    * @param {string} conferenceRecordName - Name of the conference record
-   * @returns {Promise<Array>} - Empty list (fallback)
+   * @returns {Promise<Array>} - Recordings list
    */
   async listRecordings(conferenceRecordName) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      return await this.meetRestClient.listRecordings(conferenceRecordName);
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2 failed for listRecordings, using fallback: ${error.message}`);
-      return { recordings: [], nextPageToken: null };
-    }
+    // Use REST client for direct Google Meet API v2 access
+    return await this.meetRestClient.listRecordings(conferenceRecordName);
   }
 
   /**
    * Get details of a specific recording.
-   * Note: Fallback implementation - feature not available
    * @param {string} recordingName - Name of the recording
-   * @returns {Promise<Object>} - Error message
+   * @returns {Promise<Object>} - Recording details
    */
   async getRecording(recordingName) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      return await this.meetRestClient.getRecording(recordingName);
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2 failed for getRecording, using fallback: ${error.message}`);
-      throw new Error(`Recording not found: ${error.message}`);
-    }
+    // Use REST client for direct Google Meet API v2 access
+    return await this.meetRestClient.getRecording(recordingName);
   }
 
   /**
    * List transcripts for a conference record.
-   * Note: Fallback implementation - returns empty list
    * @param {string} conferenceRecordName - Name of the conference record
-   * @returns {Promise<Array>} - Empty list (fallback)
+   * @returns {Promise<Array>} - Transcripts list
    */
   async listTranscripts(conferenceRecordName) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      return await this.meetRestClient.listTranscripts(conferenceRecordName);
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2 failed for listTranscripts, using fallback: ${error.message}`);
-      return { transcripts: [], nextPageToken: null };
-    }
+    // Use REST client for direct Google Meet API v2 access
+    return await this.meetRestClient.listTranscripts(conferenceRecordName);
   }
 
   /**
    * Get details of a specific transcript.
-   * Note: Fallback implementation - feature not available
    * @param {string} transcriptName - Name of the transcript
-   * @returns {Promise<Object>} - Error message
+   * @returns {Promise<Object>} - Transcript details
    */
   async getTranscript(transcriptName) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      return await this.meetRestClient.getTranscript(transcriptName);
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2 failed for getTranscript, using fallback: ${error.message}`);
-      throw new Error(`Transcript not found: ${error.message}`);
-    }
+    // Use REST client for direct Google Meet API v2 access
+    return await this.meetRestClient.getTranscript(transcriptName);
   }
 
   /**
    * List transcript entries (individual speech segments).
-   * Note: Fallback implementation - returns empty list
    * @param {string} transcriptName - Name of the transcript
    * @param {number} pageSize - Maximum number of entries to return
-   * @returns {Promise<Array>} - Empty list (fallback)
+   * @returns {Promise<Array>} - Transcript entries
    */
   async listTranscriptEntries(transcriptName, pageSize = 100) {
-    try {
-      // Use REST client for direct Google Meet API v2 access
-      return await this.meetRestClient.listTranscriptEntries(transcriptName, pageSize);
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2 failed for listTranscriptEntries, using fallback: ${error.message}`);
-      return { transcriptEntries: [], nextPageToken: null };
-    }
+    // Use REST client for direct Google Meet API v2 access
+    return await this.meetRestClient.listTranscriptEntries(transcriptName, pageSize);
   }
 
   // ========== GOOGLE MEET API v2beta METHODS (Developer Preview) ==========
 
   /**
    * Create a space member (co-host/member/viewer).
-   * Note: Fallback implementation - members will be documented in meeting description
    * @param {string} spaceName - Name of the space (spaces/{space_id})
    * @param {string} userEmail - Email address of the user to add
    * @param {string} role - Role for the member (COHOST, MEMBER, VIEWER)
-   * @returns {Promise<Object>} - Simulated member data
+   * @returns {Promise<Object>} - Created member data
    */
   async createSpaceMember(spaceName, userEmail, role = "MEMBER") {
     // Check if v2beta features are enabled
     if (!this.meetRestClient.featureFlags.enableV2BetaFeatures) {
-      console.warn('v2beta features are disabled. Member creation will use fallback mode.');
-      const memberId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      return {
-        name: `${spaceName}/members/${memberId}`,
-        email: userEmail,
-        role: role,
-        user: {
-          displayName: userEmail.split("@")[0],
-          type: "HUMAN",
-        },
-        fallbackMode: true,
-        betaDisabled: true
-      };
+      throw new Error('v2beta features are disabled. Member creation is not available.');
     }
 
-    try {
-      // Use REST client for direct Google Meet API v2beta access
-      return await this.meetRestClient.createSpaceMember(spaceName, userEmail, role);
-    } catch (error) {
-      // Fallback to simulated response if REST API fails
-      console.warn(`Meet API v2beta failed for createSpaceMember, using fallback: ${error.message}`);
-      
-      const memberId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      return {
-        name: `${spaceName}/members/${memberId}`,
-        email: userEmail,
-        role: role,
-        user: {
-          displayName: userEmail.split("@")[0],
-          type: "HUMAN",
-        },
-        fallbackMode: true
-      };
-    }
+    // Use REST client for direct Google Meet API v2beta access
+    return await this.meetRestClient.createSpaceMember(spaceName, userEmail, role);
   }
 
   /**
    * List members of a Google Meet space.
-   * Note: Fallback implementation - returns empty list as feature not available
    * @param {string} spaceName - Name of the space (spaces/{space_id})
    * @param {number} pageSize - Maximum number of members to return
-   * @returns {Promise<Array>} - Empty list (fallback)
+   * @returns {Promise<Array>} - Space members list
    */
   async listSpaceMembers(spaceName, pageSize = 10) {
     // Check if v2beta features are enabled
     if (!this.meetRestClient.featureFlags.enableV2BetaFeatures) {
-      console.warn('v2beta features are disabled. Member listing will use fallback mode.');
-      return { members: [], nextPageToken: null, betaDisabled: true };
+      throw new Error('v2beta features are disabled. Member listing is not available.');
     }
 
-    try {
-      // Use REST client for direct Google Meet API v2beta access
-      return await this.meetRestClient.listSpaceMembers(spaceName, pageSize);
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2beta failed for listSpaceMembers, using fallback: ${error.message}`);
-      return { members: [], nextPageToken: null };
-    }
+    // Use REST client for direct Google Meet API v2beta access
+    return await this.meetRestClient.listSpaceMembers(spaceName, pageSize);
   }
 
   /**
    * Get details of a specific space member.
-   * Note: Fallback implementation - feature not available
    * @param {string} memberName - Full name of the member (spaces/{space}/members/{member})
-   * @returns {Promise<Object>} - Error message
+   * @returns {Promise<Object>} - Member details
    */
   async getSpaceMember(memberName) {
     // Check if v2beta features are enabled
@@ -1419,38 +1272,24 @@ class GoogleMeetAPI {
       throw new Error('v2beta features are disabled. Space member operations are not available.');
     }
 
-    try {
-      // Use REST client for direct Google Meet API v2beta access
-      return await this.meetRestClient.getSpaceMember(memberName);
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2beta failed for getSpaceMember, using fallback: ${error.message}`);
-      throw new Error(`Space member not found: ${error.message}`);
-    }
+    // Use REST client for direct Google Meet API v2beta access
+    return await this.meetRestClient.getSpaceMember(memberName);
   }
 
   /**
    * Delete a space member.
-   * Note: Fallback implementation - feature not available
    * @param {string} memberName - Full name of the member (spaces/{space}/members/{member})
-   * @returns {Promise<boolean>} - Always false (fallback)
+   * @returns {Promise<boolean>} - Success status
    */
   async deleteSpaceMember(memberName) {
     // Check if v2beta features are enabled
     if (!this.meetRestClient.featureFlags.enableV2BetaFeatures) {
-      console.warn('v2beta features are disabled. Member deletion is not available.');
-      return false;
+      throw new Error('v2beta features are disabled. Member deletion is not available.');
     }
 
-    try {
-      // Use REST client for direct Google Meet API v2beta access
-      await this.meetRestClient.deleteSpaceMember(memberName);
-      return true;
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2beta failed for deleteSpaceMember, using fallback: ${error.message}`);
-      return false;
-    }
+    // Use REST client for direct Google Meet API v2beta access
+    await this.meetRestClient.deleteSpaceMember(memberName);
+    return true;
   }
 
   // ========== ADDITIONAL METHODS FROM OFFICIAL SPECS ==========
@@ -1575,7 +1414,7 @@ class GoogleMeetAPI {
       members.push({
         name: `${spaceName}/members/${Date.now()}_${Math.random()
           .toString(36)
-          .substr(2, 9)}`,
+          .substring(2, 11)}`,
         user: { email },
         role: role,
       });
