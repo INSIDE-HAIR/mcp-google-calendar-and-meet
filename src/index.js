@@ -535,83 +535,6 @@ class GoogleMeetMcpServer {
           },
         },
 
-        // Google Meet API v2beta Tools (Developer Preview)
-        {
-          name: "meet_v2beta_create_member",
-          description:
-            "[Meet API v2beta] Add a member (co-host/member/viewer) to a Google Meet space",
-          inputSchema: {
-            type: "object",
-            properties: {
-              space_name: {
-                type: "string",
-                description: "Name of the space (spaces/{space_id})",
-              },
-              user_email: {
-                type: "string",
-                description: "Email address of the user to add",
-              },
-              role: {
-                type: "string",
-                enum: ["COHOST", "MEMBER", "VIEWER"],
-                description: "Role for the member (default: MEMBER)",
-              },
-            },
-            required: ["space_name", "user_email"],
-          },
-        },
-        {
-          name: "meet_v2beta_list_members",
-          description: "[Meet API v2beta] List members of a Google Meet space",
-          inputSchema: {
-            type: "object",
-            properties: {
-              space_name: {
-                type: "string",
-                description: "Name of the space (spaces/{space_id})",
-              },
-              page_size: {
-                type: "number",
-                description:
-                  "Maximum number of members to return (default: 10, max: 100)",
-              },
-            },
-            required: ["space_name"],
-          },
-        },
-        {
-          name: "meet_v2beta_get_member",
-          description:
-            "[Meet API v2beta] Get details of a specific space member",
-          inputSchema: {
-            type: "object",
-            properties: {
-              member_name: {
-                type: "string",
-                description:
-                  "Full name of the member (spaces/{space_id}/members/{member_id})",
-              },
-            },
-            required: ["member_name"],
-          },
-        },
-        {
-          name: "meet_v2beta_delete_member",
-          description:
-            "[Meet API v2beta] Remove a member from a Google Meet space",
-          inputSchema: {
-            type: "object",
-            properties: {
-              member_name: {
-                type: "string",
-                description:
-                  "Full name of the member to remove (spaces/{space_id}/members/{member_id})",
-              },
-            },
-            required: ["member_name"],
-          },
-        },
-
         // Additional Google Meet API v2 Tools (From Official Specs)
         // NOTE: Delete space removed - not supported by Google Meet API v2
         {
@@ -691,16 +614,7 @@ class GoogleMeetMcpServer {
         // NOTE: get_transcript_entry removed - not supported by Google Meet API v2
         // Use meet_v2_list_transcript_entries instead
 
-        // ========== Google Meet API v2beta Tools (DISABLED) ==========
-        // NOTE: Beta tools are DISABLED by default (enableV2BetaFeatures: false)
-        // These methods are in Developer Preview and should not be used in production
-        // To enable beta features, set featureFlags.enableV2BetaFeatures = true
 
-        // DISABLED: meet_v2beta_create_member
-        // DISABLED: meet_v2beta_list_members  
-        // DISABLED: meet_v2beta_get_member
-        // DISABLED: meet_v2beta_delete_member
-        // DISABLED: meet_v2beta_connect_active_conference
       ],
     };
   }
@@ -1156,94 +1070,7 @@ class GoogleMeetMcpServer {
         };
       }
 
-      // Google Meet API v2beta Tools (Developer Preview)
-      else if (toolName === "meet_v2beta_create_member") {
-        const { space_name, user_email, role = "MEMBER" } = args;
-
-        if (!space_name || !user_email) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            "space_name and user_email are required"
-          );
-        }
-
-        const member = await this.googleMeet.createSpaceMember(
-          space_name,
-          user_email,
-          role
-        );
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(member, null, 2),
-            },
-          ],
-        };
-      } else if (toolName === "meet_v2beta_list_members") {
-        const { space_name, page_size = 10 } = args;
-
-        if (!space_name) {
-          throw new McpError(ErrorCode.InvalidParams, "space_name is required");
-        }
-
-        const members = await this.googleMeet.listSpaceMembers(
-          space_name,
-          page_size
-        );
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(members, null, 2),
-            },
-          ],
-        };
-      } else if (toolName === "meet_v2beta_get_member") {
-        const { member_name } = args;
-
-        if (!member_name) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            "member_name is required"
-          );
-        }
-
-        const member = await this.googleMeet.getSpaceMember(member_name);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(member, null, 2),
-            },
-          ],
-        };
-      } else if (toolName === "meet_v2beta_delete_member") {
-        const { member_name } = args;
-
-        if (!member_name) {
-          throw new McpError(
-            ErrorCode.InvalidParams,
-            "member_name is required"
-          );
-        }
-
-        const result = await this.googleMeet.deleteSpaceMember(member_name);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: result
-                ? "Member successfully removed"
-                : "Failed to remove member",
-            },
-          ],
-        };
-      } 
+ 
 
       // Additional Google Meet API v2 Tools (From Official Specs)
       // NOTE: delete_space handler removed - not supported by API

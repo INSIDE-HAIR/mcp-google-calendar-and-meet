@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Google Meet MCP Server v2.0 - An advanced Model Context Protocol (MCP) server that interacts with Google Meet through Google Calendar API v3 and Google Meet API v2/v2beta. This server provides comprehensive tools for creating and managing Google Meet meetings with advanced enterprise features.
+Google Meet MCP Server v2.0 - An advanced Model Context Protocol (MCP) server that interacts with Google Meet through Google Calendar API v3 and Google Meet API v2. This server provides comprehensive tools for creating and managing Google Meet meetings with advanced enterprise features.
 
 ## Common Development Commands
 
@@ -26,18 +26,15 @@ The project uses ES modules (`"type": "module"` in package.json) and follows thi
    - Entry point for the application
    - Implements the MCP server using `@modelcontextprotocol/sdk`
    - Handles tool registration and request routing
-   - Manages 21 tools across three APIs:
+   - Manages 17 tools across two APIs:
      - 5 Calendar API v3 tools: calendar_v3_*
      - 12 Meet API v2 (GA) tools: meet_v2_*
-     - 4 Meet API v2beta tools: meet_v2beta_*
 
 2. **src/GoogleMeetAPI.js** - Google Calendar and Meet API wrapper
    - Handles OAuth2 authentication with Google
-   - Three distinct sections for different APIs:
+   - Two distinct sections for different APIs:
      - Google Calendar API v3 methods (calendar events with guest permissions)
      - Google Meet API v2 methods (spaces, conference records, recordings)
-     - Google Meet API v2beta methods (member management)
-   - Provides fallback implementations since Meet API v2beta isn't available in googleapis
    - Manages token persistence and refresh
 
 3. **src/setup.js** - Initial OAuth setup script
@@ -100,11 +97,6 @@ The server requires Google OAuth2 credentials and supports two configuration met
 - **meet_v2_get_transcript** - Get transcript details
 - **meet_v2_list_transcript_entries** - List individual speech segments
 
-### Google Meet API v2beta Tools (Developer Preview)
-- **meet_v2beta_create_member** - Add members with roles (COHOST/MEMBER/VIEWER)
-- **meet_v2beta_list_members** - List space members
-- **meet_v2beta_get_member** - Get member details
-- **meet_v2beta_delete_member** - Remove space members
 
 ## Enhanced Features (v2.0)
 
@@ -146,12 +138,6 @@ await meet_v2_create_space({
   chat_restriction: "HOSTS_ONLY"
 });
 
-// Add co-host to space
-await meet_v2beta_create_member({
-  space_name: "spaces/abc123",
-  user_email: "cohost@company.com",
-  role: "COHOST"
-});
 ```
 
 ## Environment Configuration
@@ -169,9 +155,7 @@ GOOGLE_MEET_TOKEN_PATH="./token.json"
 
 ## Important Notes
 
-- Google Meet API v2beta is not available in the googleapis library
-- Advanced features are implemented via fallback methods
+- Advanced features are implemented via direct REST API calls
 - Recording and transcription features are documented in meeting descriptions
-- Member management returns simulated data for compatibility
 - Use `G_OAUTH_CREDENTIALS` environment variable for simplified configuration
 - The token file is automatically created adjacent to the credentials file when using `G_OAUTH_CREDENTIALS`

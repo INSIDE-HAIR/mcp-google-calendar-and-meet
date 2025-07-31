@@ -1,6 +1,6 @@
 /**
  * TypeScript definitions for Google Meet MCP Server v2.0
- * These interfaces provide type definitions for Google Calendar API v3 and Google Meet API v2/v2beta
+ * These interfaces provide type definitions for Google Calendar API v3 and Google Meet API v2
  */
 
 // ========== GOOGLE CALENDAR API v3 TYPES ==========
@@ -131,18 +131,6 @@ export interface TranscriptEntry {
   endTime: string;
 }
 
-// ========== GOOGLE MEET API v2beta TYPES (Developer Preview) ==========
-
-export interface Member {
-  name: string; // "spaces/{space}/members/{member}"
-  role: MemberRole;
-  user?: {
-    email: string;
-    displayName?: string;
-    avatar?: string;
-    type?: "HUMAN" | "SERVICE_ACCOUNT";
-  };
-}
 
 // ========== MCP TOOL PARAMETERS ==========
 
@@ -160,11 +148,6 @@ export interface CreateSpaceParams {
   default_join_as_viewer?: boolean;
 }
 
-export interface CreateMemberParams {
-  space_name: string;
-  user_email: string;
-  role?: "COHOST" | "MEMBER" | "VIEWER";
-}
 
 // ========== LEGACY TYPES (for backward compatibility) ==========
 

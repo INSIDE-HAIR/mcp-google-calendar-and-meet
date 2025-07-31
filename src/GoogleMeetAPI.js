@@ -18,14 +18,7 @@ class MeetRestClient {
   constructor(oAuth2Client) {
     this.auth = oAuth2Client;
     this.baseUrls = {
-      v2: 'https://meet.googleapis.com/v2',
-      v2beta: 'https://meet.googleapis.com/v2beta'
-    };
-    
-    // Feature flags for experimental/beta features
-    this.featureFlags = {
-      enableV2BetaFeatures: true,  // Enable v2beta features (Member management)
-      enableExperimentalWebRTC: true
+      v2: 'https://meet.googleapis.com/v2'
     };
   }
 
@@ -199,76 +192,6 @@ class MeetRestClient {
     return this.makeRequest(endpoint);
   }
 
-  // ========== GOOGLE MEET API v2beta METHODS (Developer Preview) ==========
-  // NOTE: Beta methods are DISABLED by default (enableV2BetaFeatures: false)
-  // These methods are in Developer Preview and should not be used in production
-
-  /**
-   * Create space member with role (v2beta - DISABLED)
-   */
-  async createSpaceMember(spaceName, userEmail, role = 'MEMBER') {
-    if (!this.featureFlags.enableV2BetaFeatures) {
-      throw new Error('v2beta features are disabled. Set enableV2BetaFeatures to true to enable experimental features.');
-    }
-    
-    // The request body should be the member object directly, not wrapped
-    const requestBody = {
-      role: role.toUpperCase(),
-      email: userEmail
-    };
-    
-    // Ensure spaceName is properly formatted (spaces/{space_id})
-    const formattedSpaceName = spaceName.startsWith('spaces/') ? spaceName : `spaces/${spaceName}`;
-    return this.makeRequest(`/${formattedSpaceName}/members`, {
-      method: 'POST',
-      body: JSON.stringify(requestBody)
-    }, 'v2beta');
-  }
-
-  /**
-   * List space members (v2beta - DISABLED)
-   */
-  async listSpaceMembers(spaceName, pageSize = 10) {
-    if (!this.featureFlags.enableV2BetaFeatures) {
-      throw new Error('v2beta features are disabled. Set enableV2BetaFeatures to true to enable experimental features.');
-    }
-    
-    const params = new URLSearchParams();
-    if (pageSize) params.append('pageSize', pageSize.toString());
-    
-    // Ensure spaceName is properly formatted (spaces/{space_id})
-    const formattedSpaceName = spaceName.startsWith('spaces/') ? spaceName : `spaces/${spaceName}`;
-    const endpoint = `/${formattedSpaceName}/members?${params.toString()}`;
-    return this.makeRequest(endpoint, {}, 'v2beta');
-  }
-
-  /**
-   * Get space member details (v2beta - DISABLED)
-   */
-  async getSpaceMember(memberName) {
-    if (!this.featureFlags.enableV2BetaFeatures) {
-      throw new Error('v2beta features are disabled. Set enableV2BetaFeatures to true to enable experimental features.');
-    }
-    
-    // Ensure memberName is properly formatted (spaces/{space}/members/{member})
-    const formattedMemberName = memberName.includes('/members/') ? memberName : `spaces/${memberName}`;
-    return this.makeRequest(`/${formattedMemberName}`, {}, 'v2beta');
-  }
-
-  /**
-   * Delete space member (v2beta - DISABLED)
-   */
-  async deleteSpaceMember(memberName) {
-    if (!this.featureFlags.enableV2BetaFeatures) {
-      throw new Error('v2beta features are disabled. Set enableV2BetaFeatures to true to enable experimental features.');
-    }
-    
-    // Ensure memberName is properly formatted (spaces/{space}/members/{member})
-    const formattedMemberName = memberName.includes('/members/') ? memberName : `spaces/${memberName}`;
-    return this.makeRequest(`/${formattedMemberName}`, {
-      method: 'DELETE'
-    }, 'v2beta');
-  }
 
   // ========== ADDITIONAL METHODS FROM OFFICIAL SPECS ==========
 
@@ -281,19 +204,6 @@ class MeetRestClient {
     throw new Error('Delete space operation is not supported by Google Meet API v2. Spaces cannot be deleted directly.');
   }
 
-  /**
-   * Connect to active conference (WebRTC) (v2beta - DISABLED)
-   */
-  async connectActiveConference(spaceName) {
-    if (!this.featureFlags.enableExperimentalWebRTC) {
-      throw new Error('Experimental WebRTC features are disabled. Set enableExperimentalWebRTC to true to enable.');
-    }
-    
-    return this.makeRequest(`/${spaceName}:connectActiveConference`, {
-      method: 'POST',
-      body: JSON.stringify({})
-    }, 'v2beta');
-  }
 
   /**
    * Get participant details
@@ -1242,71 +1152,6 @@ class GoogleMeetAPI {
     return await this.meetRestClient.listTranscriptEntries(transcriptName, pageSize);
   }
 
-  // ========== GOOGLE MEET API v2beta METHODS (Developer Preview) ==========
-
-  /**
-   * Create a space member (co-host/member/viewer).
-   * @param {string} spaceName - Name of the space (spaces/{space_id})
-   * @param {string} userEmail - Email address of the user to add
-   * @param {string} role - Role for the member (COHOST, MEMBER, VIEWER)
-   * @returns {Promise<Object>} - Created member data
-   */
-  async createSpaceMember(spaceName, userEmail, role = "MEMBER") {
-    // Check if v2beta features are enabled
-    if (!this.meetRestClient.featureFlags.enableV2BetaFeatures) {
-      throw new Error('v2beta features are disabled. Member creation is not available.');
-    }
-
-    // Use REST client for direct Google Meet API v2beta access
-    return await this.meetRestClient.createSpaceMember(spaceName, userEmail, role);
-  }
-
-  /**
-   * List members of a Google Meet space.
-   * @param {string} spaceName - Name of the space (spaces/{space_id})
-   * @param {number} pageSize - Maximum number of members to return
-   * @returns {Promise<Array>} - Space members list
-   */
-  async listSpaceMembers(spaceName, pageSize = 10) {
-    // Check if v2beta features are enabled
-    if (!this.meetRestClient.featureFlags.enableV2BetaFeatures) {
-      throw new Error('v2beta features are disabled. Member listing is not available.');
-    }
-
-    // Use REST client for direct Google Meet API v2beta access
-    return await this.meetRestClient.listSpaceMembers(spaceName, pageSize);
-  }
-
-  /**
-   * Get details of a specific space member.
-   * @param {string} memberName - Full name of the member (spaces/{space}/members/{member})
-   * @returns {Promise<Object>} - Member details
-   */
-  async getSpaceMember(memberName) {
-    // Check if v2beta features are enabled
-    if (!this.meetRestClient.featureFlags.enableV2BetaFeatures) {
-      throw new Error('v2beta features are disabled. Space member operations are not available.');
-    }
-
-    // Use REST client for direct Google Meet API v2beta access
-    return await this.meetRestClient.getSpaceMember(memberName);
-  }
-
-  /**
-   * Delete a space member.
-   * @param {string} memberName - Full name of the member (spaces/{space}/members/{member})
-   * @returns {Promise<boolean>} - Success status
-   */
-  async deleteSpaceMember(memberName) {
-    // Check if v2beta features are enabled
-    if (!this.meetRestClient.featureFlags.enableV2BetaFeatures) {
-      throw new Error('v2beta features are disabled. Member deletion is not available.');
-    }
-
-    // Use REST client for direct Google Meet API v2beta access
-    await this.meetRestClient.deleteSpaceMember(memberName);
-    return true;
-  }
 
   // ========== ADDITIONAL METHODS FROM OFFICIAL SPECS ==========
 
@@ -1321,26 +1166,6 @@ class GoogleMeetAPI {
     throw new Error(`Delete space operation is not supported by Google Meet API v2. Space: ${spaceName}`);
   }
 
-  /**
-   * Connect to active conference (WebRTC).
-   * @param {string} spaceName - Name of the space (spaces/{space_id})
-   * @returns {Promise<Object>} - Connection details
-   */
-  async connectActiveConference(spaceName) {
-    // Check if experimental WebRTC features are enabled
-    if (!this.meetRestClient.featureFlags.enableExperimentalWebRTC) {
-      throw new Error('Experimental WebRTC features are disabled. WebRTC connection is not available.');
-    }
-
-    try {
-      // Use REST client for direct Google Meet API v2beta access
-      return await this.meetRestClient.connectActiveConference(spaceName);
-    } catch (error) {
-      // Fallback response if REST API fails
-      console.warn(`Meet API v2beta failed for connectActiveConference, using fallback: ${error.message}`);
-      throw new Error(`Could not connect to active conference: ${error.message}`);
-    }
-  }
 
   /**
    * Get participant details.
@@ -1411,46 +1236,6 @@ class GoogleMeetAPI {
   // getTranscriptEntry method removed - not available in Google Meet API v2
   // Use listTranscriptEntries instead to get individual transcript entries
 
-  /**
-   * Add members to a Google Meet space (legacy method for compatibility).
-   * Note: Fallback implementation - co-hosts will be documented in meeting description
-   * @param {string} spaceName - Name of the space (spaces/{space_id})
-   * @param {Array<string>} memberEmails - List of member email addresses
-   * @param {string} role - Role for the members (COHOST, MEMBER, VIEWER)
-   * @returns {Promise<Array>} - Simulated members
-   */
-  async addMembersToSpace(spaceName, memberEmails, role = "MEMBER") {
-    console.warn(
-      `addMembersToSpace: Using fallback - ${role} members will be documented in meeting description`
-    );
-
-    const members = [];
-
-    for (const email of memberEmails) {
-      members.push({
-        name: `${spaceName}/members/${Date.now()}_${Math.random()
-          .toString(36)
-          .substring(2, 11)}`,
-        user: { email },
-        role: role,
-      });
-    }
-
-    return members;
-  }
-
-  /**
-   * Remove a member from a Google Meet space.
-   * Note: Fallback implementation - feature not available
-   * @param {string} memberName - Full name of the member (spaces/{space}/members/{member})
-   * @returns {Promise<boolean>} - Always false (fallback)
-   */
-  async removeSpaceMember(memberName) {
-    console.warn(
-      "removeSpaceMember: Feature not available - Google Meet API v2beta not accessible"
-    );
-    return false;
-  }
 
   /**
    * Get recordings for a meeting.
