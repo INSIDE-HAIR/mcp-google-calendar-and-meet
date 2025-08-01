@@ -1,0 +1,287 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and MCP server access
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Google OAuth credentials (encrypted)
+  googleCredentials String?
+  tokenPath         String?
+
+  // Relations
+  apiKeys     ApiKey[]
+  mcpRequests McpRequest[]
+  
+  @@map("users")
+}
+
+// API Keys for MCP server access
+model ApiKey {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  apiKey    String   @unique
+  createdAt DateTime @default(now())
+  lastUsed  DateTime?
+  isActive  Boolean  @default(true)
+  revokedAt DateTime?
+  usageCount Int     @default(0)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([lastUsed])
+  @@map("api_keys")
+}
+
+// MCP Request logging for analytics and debugging
+model McpRequest {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  toolName  String
+  arguments Json?
+  response  Json?
+  success   Boolean
+  errorMsg  String?
+  duration  Int? // milliseconds
+  timestamp DateTime @default(now())
+
+  // Metadata
+  userAgent String?
+  ipAddress String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([toolName])
+  @@index([timestamp])
+  @@index([success])
+  @@map("mcp_requests")
+}
+
+// Google Meet Space management
+model MeetSpace {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  spaceName   String   @unique // spaces/{space_id}
+  meetingUri  String?
+  accessType  SpaceAccessType @default(TRUSTED)
+  createdBy   String   @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Space configuration
+  enableRecording     Boolean @default(false)
+  enableTranscription Boolean @default(false)
+  enableSmartNotes    Boolean @default(false)
+  moderationMode      ModerationMode @default(OFF)
+  chatRestriction     RestrictionLevel @default(NO_RESTRICTION)
+  presentRestriction  RestrictionLevel @default(NO_RESTRICTION)
+
+  // Relations
+  conferenceRecords ConferenceRecord[]
+
+  @@index([createdBy])
+  @@index([accessType])
+  @@map("meet_spaces")
+}
+
+// Conference records for historical data
+model ConferenceRecord {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  conferenceRecordName String   @unique // conferenceRecords/{record_id}
+  spaceId              String   @db.ObjectId
+  startTime            DateTime?
+  endTime              DateTime?
+  duration             Int? // minutes
+  participantCount     Int?
+  createdAt            DateTime @default(now())
+
+  // Relations
+  space        MeetSpace      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  recordings   Recording[]
+  transcripts  Transcript[]
+  participants Participant[]
+
+  @@index([spaceId])
+  @@index([startTime])
+  @@map("conference_records")
+}
+
+// Recording files from Meet conferences
+model Recording {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  recordingName        String   @unique // conferenceRecords/{record_id}/recordings/{recording_id}
+  conferenceRecordId   String   @db.ObjectId
+  driveDestination     String?
+  state                RecordingState @default(FILE_GENERATED)
+  startTime            DateTime?
+  endTime              DateTime?
+  createdAt            DateTime @default(now())
+
+  // Relations
+  conferenceRecord ConferenceRecord @relation(fields: [conferenceRecordId], references: [id], onDelete: Cascade)
+
+  @@index([conferenceRecordId])
+  @@index([state])
+  @@map("recordings")
+}
+
+// Transcript files from Meet conferences
+model Transcript {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  transcriptName     String   @unique // conferenceRecords/{record_id}/transcripts/{transcript_id}
+  conferenceRecordId String   @db.ObjectId
+  docsDestination    String?
+  state              TranscriptState @default(FILE_GENERATED)
+  language           String?
+  startTime          DateTime?
+  endTime            DateTime?
+  createdAt          DateTime @default(now())
+
+  // Relations
+  conferenceRecord ConferenceRecord @relation(fields: [conferenceRecordId], references: [id], onDelete: Cascade)
+  entries          TranscriptEntry[]
+
+  @@index([conferenceRecordId])
+  @@index([state])
+  @@index([language])
+  @@map("transcripts")
+}
+
+// Individual transcript entries (speech segments)
+model TranscriptEntry {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  transcriptId String   @db.ObjectId
+  text         String
+  language     String?
+  participant  String? // Participant name or identifier
+  startTime    DateTime?
+  endTime      DateTime?
+  confidence   Float?
+  createdAt    DateTime @default(now())
+
+  // Relations
+  transcript Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  @@index([transcriptId])
+  @@index([participant])
+  @@index([startTime])
+  @@map("transcript_entries")
+}
+
+// Participants in conference records
+model Participant {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  participantName    String   @unique // conferenceRecords/{record_id}/participants/{participant_id}
+  conferenceRecordId String   @db.ObjectId
+  displayName        String?
+  email              String?
+  earliestStartTime  DateTime?
+  latestEndTime      DateTime?
+  totalDuration      Int? // minutes
+  createdAt          DateTime @default(now())
+
+  // Relations
+  conferenceRecord    ConferenceRecord     @relation(fields: [conferenceRecordId], references: [id], onDelete: Cascade)
+  participantSessions ParticipantSession[]
+
+  @@index([conferenceRecordId])
+  @@index([email])
+  @@map("participants")
+}
+
+// Individual participation sessions
+model ParticipantSession {
+  id                     String   @id @default(auto()) @map("_id") @db.ObjectId
+  participantSessionName String   @unique // conferenceRecords/{record_id}/participants/{participant_id}/participantSessions/{session_id}
+  participantId          String   @db.ObjectId
+  startTime              DateTime?
+  endTime                DateTime?
+  duration               Int? // minutes
+  createdAt              DateTime @default(now())
+
+  // Relations
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([participantId])
+  @@index([startTime])
+  @@map("participant_sessions")
+}
+
+// Calendar events integration
+model CalendarEvent {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId         String   @unique // Google Calendar event ID
+  summary         String
+  description     String?
+  location        String?
+  startTime       DateTime
+  endTime         DateTime
+  timeZone        String?
+  createdBy       String   @db.ObjectId
+  meetConference  Boolean  @default(false)
+  meetingUri      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Guest permissions
+  guestCanInviteOthers    Boolean @default(true)
+  guestCanModify          Boolean @default(false)
+  guestCanSeeOtherGuests  Boolean @default(true)
+
+  // Attendees (stored as JSON array)
+  attendees Json?
+
+  @@index([createdBy])
+  @@index([startTime])
+  @@index([meetConference])
+  @@map("calendar_events")
+}
+
+// Enums for type safety
+enum SpaceAccessType {
+  OPEN
+  TRUSTED
+  RESTRICTED
+}
+
+enum ModerationMode {
+  ON
+  OFF
+}
+
+enum RestrictionLevel {
+  HOSTS_ONLY
+  NO_RESTRICTION
+}
+
+enum RecordingState {
+  FILE_GENERATED
+  PROCESSING
+  FAILED
+}
+
+enum TranscriptState {
+  FILE_GENERATED
+  PROCESSING
+  FAILED
+}

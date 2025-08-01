@@ -61,7 +61,7 @@ To use this server with MCP-compatible systems, add the following to your MCP se
   "mcpServers": {
     "google-meet": {
       "command": "node",
-      "args": ["path/to/google-meet-mcp/src/index.js"],
+      "args": ["path/to/google-meet-mcp/src/index.ts"],
       "env": {},
       "disabled": false
     }

@@ -1,0 +1,44 @@
+TAP version 14
+# Subtest: setup.ts should export required functions and handle errors
+    ok 1 - setup.ts file exists
+    ok 2 - should define SCOPES constant
+    not ok 3 - should create oauth2Client
+      ---
+      at:
+        fileName: test/setup.simple.test.ts
+        lineNumber: 29
+        columnNumber: 5
+        typeName: Test
+      stack: |
+        Test.<anonymous> (test/setup.simple.test.ts:29:5)
+      source: |2
+          const setupContent = await fs.readFile(setupPath, 'utf8');
+          t.ok(setupContent.includes('SCOPES'), 'should define SCOPES constant');
+          t.ok(setupContent.includes('oauth2Client'), 'should create oauth2Client');
+        ----^
+          t.ok(setupContent.includes('generateAuthUrl'), 'should generate auth URL');
+        });
+      ...
+    
+    ok 4 - should generate auth URL
+    1..4
+not ok 1 - setup.ts should export required functions and handle errors # time=9.57ms
+  ---
+  at:
+    fileName: test/setup.simple.test.ts
+    lineNumber: 15
+    columnNumber: 1
+    isToplevel: true
+  source: >
+    const __dirname = path.dirname(__filename);
+  
+  
+    test('setup.ts should export required functions and handle errors', async (t)
+    => {
+  
+    ^
+      // Test that the setup file exists and can be loaded
+      const setupPath = path.join(__dirname, '../src/setup.ts');
+  ...
+
+1..1

@@ -1,11 +1,8 @@
-// TypeScript definitions for MCP integration
+// TypeScript definitions for MCP integration with Prisma types
+import type { User, ApiKey as PrismaApiKey, McpRequest, MeetSpace, ConferenceRecord, Recording, Transcript, Participant, CalendarEvent } from '@prisma/client';
 
-export interface MCPUser {
-  id: string;
-  name: string;
-  email: string;
-  mcpEnabled: boolean;
-  googleCredentials?: string; // Encrypted
+export interface MCPUser extends User {
+  mcpEnabled?: boolean;
   googleCredentialsUpdatedAt?: Date;
   googleTokens?: {
     access_token: string;
@@ -14,16 +11,9 @@ export interface MCPUser {
   };
 }
 
-export interface ApiKey {
-  id: string;
-  userId: string;
-  apiKey: string;
+export interface ApiKey extends PrismaApiKey {
   apiKeyPreview: string;
   fullApiKey?: string; // Only included for user's own keys
-  createdAt: Date;
-  lastUsed?: Date;
-  isActive: boolean;
-  usageCount: number;
   userName?: string;
   userEmail?: string;
 }
@@ -131,4 +121,75 @@ export interface MCPStats {
     lastUsed: Date;
   }>;
   generatedAt: string;
+}
+
+// Extended types for Prisma relationships
+export interface UserWithApiKeys extends User {
+  apiKeys: PrismaApiKey[];
+  mcpRequests: McpRequest[];
+}
+
+export interface MeetSpaceWithRecords extends MeetSpace {
+  conferenceRecords: ConferenceRecord[];
+}
+
+export interface ConferenceRecordWithDetails extends ConferenceRecord {
+  space: MeetSpace;
+  recordings: Recording[];
+  transcripts: Transcript[];
+  participants: Participant[];
+}
+
+export interface CalendarEventWithDetails extends CalendarEvent {
+  attendees: string[]; // JSON field converted to array
+}
+
+// Database operation types
+export interface CreateUserInput {
+  email: string;
+  name?: string;
+  googleCredentials?: string;
+  tokenPath?: string;
+}
+
+export interface CreateMeetSpaceInput {
+  spaceName: string;
+  meetingUri?: string;
+  accessType?: 'OPEN' | 'TRUSTED' | 'RESTRICTED';
+  createdBy: string;
+  enableRecording?: boolean;
+  enableTranscription?: boolean;
+  enableSmartNotes?: boolean;
+  moderationMode?: 'ON' | 'OFF';
+  chatRestriction?: 'HOSTS_ONLY' | 'NO_RESTRICTION';
+  presentRestriction?: 'HOSTS_ONLY' | 'NO_RESTRICTION';
+}
+
+export interface CreateCalendarEventInput {
+  eventId: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  startTime: Date;
+  endTime: Date;
+  timeZone?: string;
+  createdBy: string;
+  meetConference?: boolean;
+  meetingUri?: string;
+  guestCanInviteOthers?: boolean;
+  guestCanModify?: boolean;
+  guestCanSeeOtherGuests?: boolean;
+  attendees?: string[];
+}
+
+export interface LogMcpRequestInput {
+  userId: string;
+  toolName: string;
+  arguments?: any;
+  response?: any;
+  success: boolean;
+  errorMsg?: string;
+  duration?: number;
+  userAgent?: string;
+  ipAddress?: string;
 }

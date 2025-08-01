@@ -1,0 +1,33 @@
+{
+  "name": "google-meet-mcp-nextjs15",
+  "description": "Google Meet MCP Server integration for Next.ts 15 with shadcn/ui and Tailwind CSS v4",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "googleapis": "^140.0.0",
+    "@prisma/client": "^5.22.0",
+    "@radix-ui/react-slot": "^1.0.2",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.2.0",
+    "tailwindcss-animate": "^1.0.7",
+    "lucide-react": "^0.344.0",
+    "next-auth": "5.0.0-beta.4"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.0.0-alpha.25",
+    "@tailwindcss/typography": "^0.5.10",
+    "typescript": "^5.3.0",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "prisma": "^5.22.0"
+  },
+  "features": [
+    "Next.ts 15 App Router",
+    "shadcn/ui components",
+    "Tailwind CSS v4",
+    "TypeScript support",
+    "Modern authentication patterns",
+    "Google Meet MCP integration"
+  ]
+}

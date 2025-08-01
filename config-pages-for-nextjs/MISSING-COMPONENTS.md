@@ -3,7 +3,7 @@
 ## 🎯 Lo que YA tenemos implementado ✅
 
 1. ✅ **Core MCP Adapter** - Convierte tu MCP a API HTTP
-2. ✅ **API Routes** - Endpoints para Claude Desktop  
+2. ✅ **API Routes** - Endpoints para Claude Desktop
 3. ✅ **Encriptación** - Sistema AES-256 para credenciales
 4. ✅ **API Keys** - Sistema de autenticación por empleado
 5. ✅ **UI Setup** - Interfaz para configurar Google credentials
@@ -12,14 +12,15 @@
 ## 🔧 Lo que FALTA implementar (opcional/futuro)
 
 ### **1. MongoDB Connection Helper**
+
 ```javascript
-// lib/mongodb.js - Crear si no lo tienes
-import { MongoClient } from 'mongodb';
+// lib/mongodb.ts - Crear si no lo tienes
+import { MongoClient } from "mongodb";
 
 const uri = process.env.MONGODB_URI;
 let client, clientPromise;
 
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === "development") {
   if (!global._mongoClientPromise) {
     client = new MongoClient(uri);
     global._mongoClientPromise = client.connect();
@@ -37,6 +38,7 @@ export async function connectToDatabase() {
 ```
 
 ### **2. Admin Dashboard (Opcional)**
+
 ```javascript
 // pages/dashboard/mcp-admin.jsx
 // - Ver todos los empleados con MCP
@@ -46,44 +48,49 @@ export async function connectToDatabase() {
 ```
 
 ### **3. Test Page (Opcional)**
+
 ```javascript
-// pages/dashboard/mcp-test.jsx  
+// pages/dashboard/mcp-test.jsx
 // - Probar conexión MCP desde web
 // - Validar que tools funcionan
 // - Debugging para empleados
 ```
 
 ### **4. API Route Adicionales (Opcional)**
+
 ```javascript
-// pages/api/admin/mcp-stats.js - Analytics para admin
-// pages/api/mcp/revoke-api-key.js - Revocar API keys
-// pages/api/mcp/health.js - Health check endpoint
+// pages/api/admin/mcp-stats.ts - Analytics para admin
+// pages/api/mcp/revoke-api-key.ts - Revocar API keys
+// pages/api/mcp/health.ts - Health check endpoint
 ```
 
 ## 🔄 Adaptaciones Necesarias para TU proyecto
 
 ### **1. Auth Integration**
+
 Necesitarás adaptar estas líneas en los archivos:
 
 ```javascript
-// En pages/api/mcp/[...mcp].js
-import { authOptions } from '../auth/[...nextauth]'; // ← Tu configuración auth
+// En pages/api/mcp/[...mcp].ts
+import { authOptions } from "../auth/[...nextauth]"; // ← Tu configuración auth
 
-// En pages/api/google/setup-credentials.js  
-import { authOptions } from '../auth/[...nextauth]'; // ← Tu configuración auth
+// En pages/api/google/setup-credentials.ts
+import { authOptions } from "../auth/[...nextauth]"; // ← Tu configuración auth
 
-// En pages/api/mcp/generate-api-key.js
-import { authOptions } from '../auth/[...nextauth]'; // ← Tu configuración auth
+// En pages/api/mcp/generate-api-key.ts
+import { authOptions } from "../auth/[...nextauth]"; // ← Tu configuración auth
 ```
 
 ### **2. User Schema**
+
 Asegurar que tu schema de users incluya:
+
 ```javascript
 {
   _id: ObjectId,          // Tu campo ID actual
-  email: String,          // Tu campo email actual  
+  email: String,          // Tu campo email actual
   name: String,           // Tu campo name actual
-  
+
   // Campos nuevos para MCP:
   googleCredentials: String,        // Encrypted JSON
   googleCredentialsUpdatedAt: Date,
@@ -97,19 +104,20 @@ Asegurar que tu schema de users incluya:
 ```
 
 ### **3. Navigation/Routing**
+
 Agregar link en tu dashboard:
+
 ```jsx
 // En tu componente de navigation
-<Link href="/dashboard/google-meet-setup">
-  Configure Google Meet MCP
-</Link>
+<Link href='/dashboard/google-meet-setup'>Configure Google Meet MCP</Link>
 ```
 
 ## 🚧 Posibles Ajustes de Paths
 
-Los archivos asumen estructura estándar Next.js:
-- `pages/api/auth/[...nextauth].js` ← Tu NextAuth config
-- `lib/mongodb.js` ← Tu conexión MongoDB
+Los archivos asumen estructura estándar Next.ts:
+
+- `pages/api/auth/[...nextauth].ts` ← Tu NextAuth config
+- `lib/mongodb.ts` ← Tu conexión MongoDB
 - Esquema users en colección `users`
 
 Si tienes estructura diferente, ajustar imports correspondientes.
@@ -117,6 +125,7 @@ Si tienes estructura diferente, ajustar imports correspondientes.
 ## 🧪 Testing Checklist
 
 ### **Antes de desplegar:**
+
 - [ ] Verificar conexión MongoDB funciona
 - [ ] Probar encriptación/desencriptación
 - [ ] Validar generación de API keys
@@ -125,6 +134,7 @@ Si tienes estructura diferente, ajustar imports correspondientes.
 - [ ] Validar endpoint MCP responde correctamente
 
 ### **Después de desplegar:**
+
 - [ ] Probar con un empleado real
 - [ ] Verificar configuración Claude Desktop
 - [ ] Confirmar que 17 tools aparecen en Claude
@@ -134,16 +144,19 @@ Si tienes estructura diferente, ajustar imports correspondientes.
 ## 💡 Consejos de Implementación
 
 ### **Desarrollo Local:**
+
 1. Usar `.env.local` para variables de entorno
 2. Probar con un usuario test antes de abrir a empleados
-3. Verificar logs en consola Next.js
+3. Verificar logs en consola Next.ts
 
 ### **Producción:**
+
 1. Asegurar `ENCRYPTION_KEY` está configurada
-2. Verificar que MongoDB acepta conexiones desde producción  
+2. Verificar que MongoDB acepta conexiones desde producción
 3. Configurar CORS correctamente si usas dominios diferentes
 
 ### **Seguridad:**
+
 1. Nunca hacer console.log de credenciales reales
 2. Verificar que .env está en .gitignore
 3. Usar HTTPS en producción (obligatorio para OAuth)
@@ -151,16 +164,19 @@ Si tienes estructura diferente, ajustar imports correspondientes.
 ## 🎯 Roadmap Futuro (post-implementación)
 
 ### **Fase 2 - Admin Tools:**
+
 - Dashboard con analytics de uso
 - Gestión centralizada de API keys
 - Alertas automáticas por errores
 
 ### **Fase 3 - Advanced Features:**
+
 - SSO integration para auto-setup
 - Bulk operations para admin
 - Advanced permission management
 
 ### **Fase 4 - Monitoring:**
+
 - Metrics con Prometheus/DataDog
 - Error tracking con Sentry
 - Performance monitoring

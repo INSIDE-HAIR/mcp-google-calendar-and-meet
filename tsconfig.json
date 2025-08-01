@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "noImplicitReturns": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "outDir": "./build",
+    "rootDir": "./",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false,
+    "allowImportingTsExtensions": false,
+    "noEmit": false,
+    "incremental": true,
+    "tsBuildInfoFile": "./build/.tsbuildinfo",
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
+    "lib": [
+      "ES2022"
+    ]
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "**/*.js"
+  ],
+  "ts-node": {
+    "esm": true
+  }
+}

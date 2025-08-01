@@ -1,6 +1,6 @@
-# 🚀 Google Meet MCP - Next.js Integration Files
+# 🚀 Google Meet MCP - Next.ts Integration Files
 
-Esta carpeta contiene TODOS los archivos necesarios para integrar Google Meet MCP Server en tu proyecto Next.js existente.
+Esta carpeta contiene TODOS los archivos necesarios para integrar Google Meet MCP Server en tu proyecto Next.ts existente.
 
 ## 📂 Estructura de Archivos
 
@@ -8,11 +8,11 @@ Esta carpeta contiene TODOS los archivos necesarios para integrar Google Meet MC
 config-pages-for-nextjs/
 ├── lib/                          # Librerías core
 │   ├── google-meet-mcp/         # Tu código MCP original
-│   ├── nextjs-mcp-adapter.js    # Adapter principal
-│   ├── mcp-utils.js             # Utilidades MongoDB
-│   ├── encryption.js            # Sistema encriptación
-│   ├── api-keys.js              # Gestión API keys
-│   └── mongodb.js               # Conexión MongoDB
+│   ├── nextjs-mcp-adapter.ts    # Adapter principal
+│   ├── mcp-utils.ts             # Utilidades MongoDB
+│   ├── encryption.ts            # Sistema encriptación
+│   ├── api-keys.ts              # Gestión API keys
+│   └── mongodb.ts               # Conexión MongoDB
 ├── pages/
 │   ├── api/
 │   │   ├── mcp/                 # Endpoints MCP
@@ -24,20 +24,23 @@ config-pages-for-nextjs/
 └── README.md                    # Esta guía
 ```
 
-## 🔧 Instalación en tu Next.js
+## 🔧 Instalación en tu Next.ts
 
 ### Paso 1: Copiar archivos
+
 ```bash
-# Desde la raíz de tu proyecto Next.js:
+# Desde la raíz de tu proyecto Next.ts:
 cp -r config-pages-for-nextjs/* ./
 ```
 
 ### Paso 2: Instalar dependencias
+
 ```bash
 npm install @modelcontextprotocol/sdk googleapis
 ```
 
 ### Paso 3: Variables de entorno
+
 ```bash
 # Agregar a .env.local:
 ENCRYPTION_KEY="tu_clave_super_secreta_de_32_caracteres_minimo"
@@ -45,6 +48,7 @@ ENCRYPTION_KEY="tu_clave_super_secreta_de_32_caracteres_minimo"
 ```
 
 ### Paso 4: Adaptar imports
+
 - Revisar imports de NextAuth en archivos API
 - Ajustar schema MongoDB si es necesario
 
@@ -75,4 +79,4 @@ Cada carpeta contiene su propio README.md con instrucciones específicas.
 
 ---
 
-**¡Todo listo para migrar a tu Next.js! 🎉**
+**¡Todo listo para migrar a tu Next.ts! 🎉**
