@@ -1,0 +1,23 @@
+runtime: typescript
+
+configSchema:
+  type: object
+  properties:
+    CLIENT_ID:
+      type: string
+      title: "Google OAuth2 Client ID"
+      description: "Google OAuth2 Client ID for authentication"
+    CLIENT_SECRET:
+      type: string
+      title: "Google OAuth2 Client Secret"
+      description: "Google OAuth2 Client Secret"
+    REFRESH_TOKEN:
+      type: string
+      title: "Google OAuth2 Refresh Token"
+      description: "Long-lived refresh token for authentication"
+    debug:
+      type: boolean
+      default: false
+      title: "Enable Debug Logging"
+      description: "Enable debug logging for troubleshooting"
+  required: [CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN]
