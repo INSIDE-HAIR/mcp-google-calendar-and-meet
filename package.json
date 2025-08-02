@@ -3,7 +3,7 @@
   "version": "3.0.0",
   "description": "A Model Context Protocol (MCP) server for interacting with Google Meet through the Google Calendar API",
   "main": "dist/index.js",
-  "module": "./src/index.ts",
+  "module": "./src/smithery.ts",
   "type": "module",
   "bin": {
     "google-meet-mcp": "dist/index.js"
