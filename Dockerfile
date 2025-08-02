@@ -51,8 +51,9 @@ WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=dependencies /app/package*.json ./
 
-# Copy source code and TypeScript configuration
+# Copy source code, scripts, and TypeScript configuration
 COPY src/ ./src/
+COPY scripts/ ./scripts/
 COPY tsconfig.json ./
 
 # Build TypeScript to JavaScript (optional, tsx can run TS directly)
@@ -78,7 +79,8 @@ WORKDIR /app
 COPY --from=dependencies --chown=mcp:nodejs /app/node_modules ./node_modules
 COPY --from=dependencies --chown=mcp:nodejs /app/package*.json ./
 COPY --from=builder --chown=mcp:nodejs /app/src ./src/
-COPY --from=builder --chown=mcp:nodejs /app/build ./build/
+COPY --from=builder --chown=mcp:nodejs /app/scripts ./scripts/
+COPY --from=builder --chown=mcp:nodejs /app/dist ./dist/
 COPY --chown=mcp:nodejs *.md ./
 
 # Production environment variables for Google Meet MCP Server v3.0
@@ -117,8 +119,8 @@ VOLUME ["/app/logs", "/app/data"]
 # Use dumb-init for proper signal handling in containers
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the MCP server with tsx for TypeScript support
-CMD ["npx", "tsx", "src/index.ts"]
+# Start the MCP server using compiled JavaScript for optimal performance
+CMD ["node", "dist/index.js"]
 
 # Metadata labels for container registry
 LABEL org.opencontainers.image.title="Google Meet MCP Server" \
