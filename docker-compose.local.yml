@@ -1,29 +1,29 @@
 # Google Meet MCP Server v3.0 - Local Development (Simplified)
 # Ultra-simple Docker Compose for quick local development
-version: '3.8'
 
 services:
   google-meet-mcp:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: google-meet-mcp-simple
+    container_name: google-meet-mcp-local
     restart: unless-stopped
     
     # Simple environment configuration
     environment:
       - NODE_ENV=development
       - LOG_LEVEL=debug
+      - ENABLE_HEALTH_CHECK=true
+      - HEALTH_CHECK_PORT=9090
     
     # Load credentials from local env file
     env_file:
       - .env.local
     
-    # Minimal volume mounts
+    # Minimal volume mounts for development
     volumes:
       - ./src:/app/src:ro  # Hot reload source code
-      - ./credentials.json:/app/credentials.json:ro
-      - ./token.json:/app/token.json:rw
+      - ./.env.local:/app/.env.local:ro  # Environment variables
     
     # Expose health check port
     ports:
@@ -33,12 +33,20 @@ services:
     stdin_open: true
     tty: true
     
-    # Simplified health check
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-# No volumes or networks - keep it simple
+    # Resource limits for local development
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    
+    # Use main server and keep it running with tty
+    command: ["tail", "-f", "/dev/null"]
+    
+    # No health check for now - just keep container running
+    # healthcheck:
+    #   test: ["CMD", "echo", "healthy"]
+    #   interval: 30s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 15s

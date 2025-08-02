@@ -9,8 +9,7 @@ services:
   google-meet-mcp:
     build:
       context: .
-      dockerfile: Dockerfile.advanced
-      target: monitoring  # Use monitoring stage
+      dockerfile: Dockerfile
     container_name: google-meet-mcp-advanced
     restart: unless-stopped
     
@@ -18,50 +17,33 @@ services:
     environment:
       - NODE_ENV=production
       - LOG_LEVEL=info
-      
-      # Direct token authentication
-      - CLIENT_ID=${CLIENT_ID:-}
-      - CLIENT_SECRET=${CLIENT_SECRET:-}
-      - REFRESH_TOKEN=${REFRESH_TOKEN:-}
-      
-      # Advanced monitoring settings
       - ENABLE_HEALTH_CHECK=true
       - HEALTH_CHECK_PORT=9090
       - ENABLE_METRICS=true
       - METRICS_PORT=9091
-      - ENABLE_DEBUG_ENDPOINTS=true
-      
-      # Performance optimizations
       - NODE_OPTIONS=--enable-source-maps --max-old-space-size=512
     
-    # Load additional config from env file
+    # Load config from env file
     env_file:
       - .env.local
     
-    # Comprehensive volume mounts
+    # Essential volume mounts
     volumes:
-      # Credentials (read-only for security)
-      - ./credentials.json:/app/credentials.json:ro
-      - ./token.json:/app/token.json:rw
-      # Persistent data and logs
       - mcp_logs:/app/logs
       - mcp_data:/app/data
-      # Configuration files
-      - ./docs:/app/docs:ro
     
     # Network configuration
     ports:
       - "9090:9090"  # Health check endpoint
       - "9091:9091"  # Metrics endpoint
-      - "3000:3000"  # HTTP transport (if configured)
     
-    # Advanced health check
+    # Health check using node
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
-      interval: 15s
-      timeout: 5s
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:9090/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
       start_period: 30s
-      retries: 5
+      retries: 3
     
     # Resource limits for production
     deploy:
@@ -73,27 +55,17 @@ services:
           memory: 512M
           cpus: '1.0'
     
-    # Advanced logging
+    # Production logging
     logging:
       driver: "json-file"
       options:
-        max-size: "100m"
-        max-file: "5"
+        max-size: "50m"
+        max-file: "3"
         compress: "true"
-    
-    # Security settings
-    security_opt:
-      - no-new-privileges:true
-    
-    # Dependencies
-    depends_on:
-      prometheus:
-        condition: service_started
     
     # Connect to monitoring network
     networks:
       - monitoring
-      - default
 
   # ======================================================================
   # Prometheus - Metrics Collection
