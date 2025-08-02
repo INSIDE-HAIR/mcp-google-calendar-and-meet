@@ -11,8 +11,16 @@ import path from "path";
 import { fileURLToPath } from "url";
 import process from "process";
 
-// Load environment variables from .env.local (if it exists)
-dotenv.config({ path: ".env.local" });
+// Load environment variables completely silently for MCP compatibility
+try {
+  // Only suppress dotenv output, not everything
+  const originalWrite = process.stdout.write;
+  process.stdout.write = () => true;
+  dotenv.config({ path: ".env.local", debug: false, override: false });
+  process.stdout.write = originalWrite;
+} catch {
+  // Ignore any dotenv errors silently
+}
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -33,6 +41,14 @@ import { createMonitoringEndpoints } from "./endpoints/monitoring.js";
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Safe logging function that doesn't interfere with MCP protocol
+function debugLog(message: string) {
+  // Only log to stderr in development mode or when explicitly enabled
+  if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+    console.error(message);
+  }
+}
 
 class GoogleMeetMcpServer {
   private server: Server;
@@ -73,10 +89,10 @@ class GoogleMeetMcpServer {
       credentialsPath = process.env.GOOGLE_MEET_CREDENTIALS_PATH;
       tokenPath = process.env.GOOGLE_MEET_TOKEN_PATH;
     } else {
-      console.error("Error: Missing required environment variables.");
-      console.error("Please set either:");
-      console.error("  - G_OAUTH_CREDENTIALS (path to OAuth credentials file)");
-      console.error(
+      debugLog("Error: Missing required environment variables.");
+      debugLog("Please set either:");
+      debugLog("  - G_OAUTH_CREDENTIALS (path to OAuth credentials file)");
+      debugLog(
         "  - OR both GOOGLE_MEET_CREDENTIALS_PATH and GOOGLE_MEET_TOKEN_PATH"
       );
       process.exit(1);
@@ -91,10 +107,14 @@ class GoogleMeetMcpServer {
     this.setupToolHandlers();
 
     // Error handling
-    this.server.onerror = (error) => console.error(`[MCP Error] ${error}`);
+    this.server.onerror = (error) => {
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error(`[MCP Error] ${error}`);
+      }
+    };
 
     process.on("SIGINT", async () => {
-      console.error("Shutting down...");
+      debugLog("Shutting down...");
       if (this.monitoringEndpoints) {
         await this.monitoringEndpoints.stop();
       }
@@ -129,10 +149,10 @@ class GoogleMeetMcpServer {
         );
         
         await this.monitoringEndpoints.start();
-        console.error(`Monitoring endpoints started on port ${monitoringPort}`);
+        debugLog(`Monitoring endpoints started on port ${monitoringPort}`);
       }
     } catch (error) {
-      console.error("Warning: Failed to initialize monitoring system:", error);
+      debugLog("Warning: Failed to initialize monitoring system:" + error);
       // Don't fail the entire server if monitoring fails
     }
   }
@@ -670,6 +690,118 @@ class GoogleMeetMcpServer {
             required: ["participant_name"],
           },
         },
+        // ========== ADDITIONAL CALENDAR API v3 ENDPOINTS ==========
+        {
+          name: "calendar_v3_freebusy_query",
+          description: "[Calendar API v3] Query free/busy information for calendars",
+          inputSchema: {
+            type: "object",
+            properties: {
+              calendar_ids: {
+                type: "array",
+                items: { type: "string" },
+                description: "Array of calendar IDs to query",
+              },
+              time_min: {
+                type: "string",
+                description: "Start time in ISO 8601 format (e.g., '2024-01-01T00:00:00Z')",
+              },
+              time_max: {
+                type: "string", 
+                description: "End time in ISO 8601 format (e.g., '2024-01-01T23:59:59Z')",
+              },
+            },
+            required: ["calendar_ids", "time_min", "time_max"],
+          },
+        },
+        {
+          name: "calendar_v3_quick_add",
+          description: "[Calendar API v3] Create event using natural language",
+          inputSchema: {
+            type: "object",
+            properties: {
+              calendar_id: {
+                type: "string",
+                description: "Calendar ID to add event to (default: 'primary')",
+              },
+              text: {
+                type: "string",
+                description: "Natural language description (e.g., 'Lunch with John tomorrow at 2pm')",
+              },
+            },
+            required: ["text"],
+          },
+        },
+        // ========== MEET API v2beta SPACE MEMBERS ENDPOINTS ==========
+        {
+          name: "meet_v2beta_create_space_member",
+          description: "[Meet API v2beta] Add a member (co-host) to a meeting space",
+          inputSchema: {
+            type: "object",
+            properties: {
+              space_name: {
+                type: "string",
+                description: "Name of the space (e.g., 'spaces/abc-defg-hij')",
+              },
+              email: {
+                type: "string",
+                description: "Email address of the user to add as member",
+              },
+              role: {
+                type: "string",
+                enum: ["CO_HOST", "ROLE_UNSPECIFIED"],
+                description: "Role to assign to the member (default: 'CO_HOST')",
+              },
+            },
+            required: ["space_name", "email"],
+          },
+        },
+        {
+          name: "meet_v2beta_list_space_members",
+          description: "[Meet API v2beta] List all members of a meeting space",
+          inputSchema: {
+            type: "object",
+            properties: {
+              space_name: {
+                type: "string",
+                description: "Name of the space (e.g., 'spaces/abc-defg-hij')",
+              },
+              page_size: {
+                type: "number",
+                description: "Maximum number of members to return (default: 10, max: 100)",
+              },
+            },
+            required: ["space_name"],
+          },
+        },
+        {
+          name: "meet_v2beta_get_space_member",
+          description: "[Meet API v2beta] Get details of a specific space member",
+          inputSchema: {
+            type: "object",
+            properties: {
+              member_name: {
+                type: "string",
+                description: "Full name of the member (e.g., 'spaces/abc-defg-hij/members/member-id')",
+              },
+            },
+            required: ["member_name"],
+          },
+        },
+        {
+          name: "meet_v2beta_delete_space_member",
+          description: "[Meet API v2beta] Remove a member from a meeting space",
+          inputSchema: {
+            type: "object",
+            properties: {
+              member_name: {
+                type: "string",
+                description: "Full name of the member (e.g., 'spaces/abc-defg-hij/members/member-id')",
+              },
+            },
+            required: ["member_name"],
+          },
+        },
         // NOTE: get_transcript_entry removed - not supported by Google Meet API v2
         // Use meet_v2_list_transcript_entries instead
       ],
@@ -1126,8 +1258,113 @@ class GoogleMeetMcpServer {
           ],
         };
       }
+      // ========== ADDITIONAL CALENDAR API v3 HANDLERS ==========
+      else if (toolName === "calendar_v3_freebusy_query") {
+        // Validate arguments with Zod schema
+        const validatedArgs = validateToolArgs(toolName, args);
+
+        const freeBusyInfo = await this.googleMeet.queryFreeBusy(
+          validatedArgs.calendar_ids,
+          validatedArgs.time_min,
+          validatedArgs.time_max
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(freeBusyInfo, null, 2),
+            },
+          ],
+        };
+      } else if (toolName === "calendar_v3_quick_add") {
+        // Validate arguments with Zod schema
+        const validatedArgs = validateToolArgs(toolName, args);
+
+        const event = await this.googleMeet.quickAddEvent(
+          validatedArgs.calendar_id || "primary",
+          validatedArgs.text
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(event, null, 2),
+            },
+          ],
+        };
+      }
+      // ========== MEET API v2beta SPACE MEMBERS HANDLERS ==========
+      else if (toolName === "meet_v2beta_create_space_member") {
+        // Validate arguments with Zod schema
+        const validatedArgs = validateToolArgs(toolName, args);
+
+        const member = await this.googleMeet.createSpaceMember(
+          validatedArgs.space_name,
+          validatedArgs.email,
+          validatedArgs.role || "COHOST"
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(member, null, 2),
+            },
+          ],
+        };
+      } else if (toolName === "meet_v2beta_list_space_members") {
+        // Validate arguments with Zod schema
+        const validatedArgs = validateToolArgs(toolName, args);
+
+        const members = await this.googleMeet.listSpaceMembers(
+          validatedArgs.space_name,
+          validatedArgs.page_size || 10
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(members, null, 2),
+            },
+          ],
+        };
+      } else if (toolName === "meet_v2beta_get_space_member") {
+        // Validate arguments with Zod schema
+        const validatedArgs = validateToolArgs(toolName, args);
+
+        const member = await this.googleMeet.getSpaceMember(
+          validatedArgs.member_name
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(member, null, 2),
+            },
+          ],
+        };
+      } else if (toolName === "meet_v2beta_delete_space_member") {
+        // Validate arguments with Zod schema
+        const validatedArgs = validateToolArgs(toolName, args);
+
+        const result = await this.googleMeet.deleteSpaceMember(
+          validatedArgs.member_name
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
       // NOTE: get_transcript_entry handler removed - not supported by API
-      // NOTE: All v2beta handlers removed - beta features are disabled
       else {
         throw new McpError(
           ErrorCode.MethodNotFound,
@@ -1166,16 +1403,27 @@ class GoogleMeetMcpServer {
    * Run the server
    */
   async run() {
+    // Initialize Google Meet API before starting the server
+    try {
+      debugLog("Initializing Google Meet API...");
+      await this.googleMeet.initialize();
+      await this.initializeMonitoring();
+      debugLog("Google Meet API initialized successfully");
+    } catch (error) {
+      debugLog(`Warning: Failed to initialize Google Meet API on startup: ${error.message}`);
+      debugLog("API will be initialized on first tool call");
+    }
+
     const transport = new StdioServerTransport();
-    console.error("Google Meet MCP server starting on stdio...");
+    debugLog("Google Meet MCP server starting on stdio...");
     await this.server.connect(transport);
-    console.error("Google Meet MCP server connected");
+    debugLog("Google Meet MCP server connected");
   }
 }
 
 // Create and run the server
 const server = new GoogleMeetMcpServer();
 server.run().catch((err) => {
-  console.error("Fatal error:", err);
+  debugLog("Fatal error:" + err);
   process.exit(1);
 });

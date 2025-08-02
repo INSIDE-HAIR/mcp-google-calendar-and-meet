@@ -33,6 +33,12 @@
     border: 1px solid rgb(147, 197, 253);
 }
 
+.status-warning {
+    background-color: rgb(254, 243, 199);
+    color: rgb(146, 64, 14);
+    border: 1px solid rgb(253, 224, 71);
+}
+
 /* Smooth transitions */
 input:focus {
     transform: translateY(-1px);

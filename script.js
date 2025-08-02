@@ -61,12 +61,47 @@ class OAuthCodeExtractor {
         }
 
         try {
-            // Parse the URL to extract the code parameter
-            const urlObj = new URL(url);
-            const code = urlObj.searchParams.get('code');
+            let code = null;
+            
+            // Method 1: Try parsing as URL with searchParams
+            try {
+                const urlObj = new URL(url);
+                code = urlObj.searchParams.get('code');
+            } catch (e) {
+                // URL parsing failed, try manual extraction
+            }
+            
+            // Method 2: Manual regex extraction for various formats
+            if (!code) {
+                // Try different patterns
+                const patterns = [
+                    /[?&]code=([^&\s#]+)/i,           // Standard: ?code=...
+                    /\/code=([^&\s#\/]+)/i,          // Alternative: /code=...
+                    /code%3D([^&\s#%]+)/i,           // URL encoded: code%3D...
+                    /authorization_code=([^&\s#]+)/i  // Alternative parameter name
+                ];
+                
+                for (const pattern of patterns) {
+                    const match = url.match(pattern);
+                    if (match && match[1]) {
+                        code = decodeURIComponent(match[1]);
+                        break;
+                    }
+                }
+            }
             
             if (!code) {
-                this.showStatus('No authorization code found in URL', 'error');
+                // Try extracting anything that looks like an OAuth code
+                const oauthPattern = /4\/[0-9A-Za-z\-_]{20,}/;
+                const match = url.match(oauthPattern);
+                if (match) {
+                    code = match[0];
+                }
+            }
+            
+            if (!code) {
+                this.showStatus('No authorization code found in URL. Please check the format.', 'error');
+                this.showDebugInfo(url);
                 return;
             }
 
@@ -76,6 +111,9 @@ class OAuthCodeExtractor {
                 return;
             }
 
+            // Clean up the code (remove any trailing characters)
+            code = code.split(/[&#\s]/)[0];
+
             this.codeOutput.value = code;
             this.copyBtn.disabled = false;
             this.showStatus('Authorization code extracted successfully!', 'success');
@@ -84,7 +122,26 @@ class OAuthCodeExtractor {
             this.codeOutput.select();
             
         } catch (error) {
-            this.showStatus('Invalid URL format. Please check the URL and try again.', 'error');
+            this.showStatus('Error extracting code. Please check the URL format.', 'error');
+            console.error('Extraction error:', error);
+        }
+    }
+
+    showDebugInfo(url) {
+        console.log('Debug info for URL:', url);
+        console.log('URL contains "code":', url.includes('code'));
+        console.log('URL contains "4/":', url.includes('4/'));
+        
+        // Show partial matches for debugging
+        const partialMatches = [
+            url.match(/code[=:]/i),
+            url.match(/4\/[0-9A-Za-z]/),
+            url.match(/[?&][^=]*code[^=]*=/i)
+        ].filter(Boolean);
+        
+        if (partialMatches.length > 0) {
+            console.log('Partial matches found:', partialMatches);
+            this.showStatus('Found partial code patterns. Check browser console for details.', 'warning');
         }
     }
 

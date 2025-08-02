@@ -59,7 +59,9 @@ export class MonitoringEndpoints {
 
     return new Promise((resolve, reject) => {
       this.server!.listen(this.config.port, this.config.host, () => {
-        console.log(`Monitoring endpoints available at http://${this.config.host}:${this.config.port}`);
+        if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+          console.error(`Monitoring endpoints available at http://${this.config.host}:${this.config.port}`);
+        }
         resolve();
       });
 

@@ -361,6 +361,58 @@ export const ListParticipantSessionsSchema = z.object({
 /**
  * TODAS LAS 17 HERRAMIENTAS - Schemas de validación completos
  */
+// ========== ADDITIONAL CALENDAR API v3 SCHEMAS ==========
+
+export const FreeBusyQuerySchema = z.object({
+  calendar_ids: z.array(z.string().min(1, 'Calendar ID cannot be empty'))
+    .min(1, 'At least one calendar ID is required')
+    .max(50, 'Maximum 50 calendar IDs allowed'),
+  time_min: z.string()
+    .regex(isoDateTimeRegex, 'Start time must be in ISO 8601 format (e.g., "2024-02-01T10:00:00Z")'),
+  time_max: z.string()
+    .regex(isoDateTimeRegex, 'End time must be in ISO 8601 format (e.g., "2024-02-01T23:59:59Z")')
+});
+
+export const QuickAddSchema = z.object({
+  calendar_id: z.string().optional()
+    .describe('Calendar ID to add event to (defaults to "primary")'),
+  text: z.string()
+    .min(1, 'Event text cannot be empty')
+    .max(1000, 'Event text cannot exceed 1000 characters')
+    .describe('Natural language description (e.g., "Lunch with John tomorrow at 2pm")')
+});
+
+// ========== MEET API v2beta SPACE MEMBERS SCHEMAS ==========
+
+export const CreateSpaceMemberSchema = z.object({
+  space_name: z.string()
+    .regex(spaceNameRegex, 'Space name must be in format "spaces/{space_id}"'),
+  email: z.string().email('Invalid email address'),
+  role: z.enum(['CO_HOST', 'ROLE_UNSPECIFIED']).optional()
+    .describe('Role to assign (defaults to CO_HOST)')
+});
+
+export const ListSpaceMembersSchema = z.object({
+  space_name: z.string()
+    .regex(spaceNameRegex, 'Space name must be in format "spaces/{space_id}"'),
+  page_size: z.number()
+    .min(1, 'Page size must be at least 1')
+    .max(100, 'Page size cannot exceed 100')
+    .optional()
+});
+
+export const GetSpaceMemberSchema = z.object({
+  member_name: z.string()
+    .regex(/^spaces\/[a-zA-Z0-9_-]+\/members\/[a-zA-Z0-9_-]+$/, 
+      'Member name must be in format "spaces/{space_id}/members/{member_id}"')
+});
+
+export const DeleteSpaceMemberSchema = z.object({
+  member_name: z.string()
+    .regex(/^spaces\/[a-zA-Z0-9_-]+\/members\/[a-zA-Z0-9_-]+$/, 
+      'Member name must be in format "spaces/{space_id}/members/{member_id}"')
+});
+
 export const ValidationSchemas = {
   // Calendar API v3 Tools (6 herramientas)
   'calendar_v3_list_calendars': ListCalendarsSchema,
@@ -385,7 +437,17 @@ export const ValidationSchemas = {
   'meet_v2_get_participant': GetParticipantSchema,
   'meet_v2_list_participants': ListParticipantsSchema,
   'meet_v2_get_participant_session': GetParticipantSessionSchema,
-  'meet_v2_list_participant_sessions': ListParticipantSessionsSchema
+  'meet_v2_list_participant_sessions': ListParticipantSessionsSchema,
+
+  // Additional Calendar API v3 Tools (2 herramientas)
+  'calendar_v3_freebusy_query': FreeBusyQuerySchema,
+  'calendar_v3_quick_add': QuickAddSchema,
+
+  // Meet API v2beta Space Members Tools (4 herramientas)
+  'meet_v2beta_create_space_member': CreateSpaceMemberSchema,
+  'meet_v2beta_list_space_members': ListSpaceMembersSchema,
+  'meet_v2beta_get_space_member': GetSpaceMemberSchema,
+  'meet_v2beta_delete_space_member': DeleteSpaceMemberSchema
 };
 
 /**

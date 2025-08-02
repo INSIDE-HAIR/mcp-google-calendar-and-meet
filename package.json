@@ -1,17 +1,25 @@
 {
-  "name": "google-meet-mcp",
+  "name": "@inside-hair/google-meet-mcp",
   "version": "3.0.0",
   "description": "A Model Context Protocol (MCP) server for interacting with Google Meet through the Google Calendar API",
-  "main": "build/src/index.js",
+  "main": "dist/index.js",
   "type": "module",
+  "bin": {
+    "google-meet-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "node scripts/build.js",
     "build:watch": "tsc --watch",
-    "start": "tsx src/index.ts",
-    "start:dev": "tsx --watch src/index.ts",
-    "start:js": "node build/src/index.js",
-    "setup": "tsx src/setup.ts",
-    "setup:js": "node build/src/setup.js",
+    "start": "node dist/index.js",
+    "start:dev": "tsx src/index.ts",
+    "start:watch": "tsx --watch src/index.ts",
+    "setup": "node dist/setup.js",
+    "auth": "node dist/setup.js",
     "oauth-helper": "open index.html",
     "refresh-token": "./refresh-token.sh",
     "test": "vitest run",
@@ -38,14 +46,16 @@
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.8.0",
+    "bignumber.js": "^9.3.1",
     "dotenv": "^17.2.1",
-    "googleapis": "^126.0.0",
+    "googleapis": "^144.0.0",
     "open": "^9.1.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^24.1.0",
     "@vitest/coverage-v8": "^3.2.4",
+    "esbuild": "^0.25.8",
     "tsx": "^4.20.3",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"

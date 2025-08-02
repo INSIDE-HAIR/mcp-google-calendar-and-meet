@@ -5,7 +5,7 @@
 
 import fs from "fs/promises";
 import path from "path";
-import { google } from "googleapis";
+import { google, calendar_v3 } from "googleapis";
 import open from "open";
 import http from "http";
 import { URL } from "url";
@@ -310,9 +310,25 @@ class GoogleMeetAPI {
    * Initialize the API client with OAuth2 credentials.
    */
   async initialize() {
-    const credentials = JSON.parse(
-      await fs.readFile(this.credentialsPath, "utf8")
-    );
+    // Debug logging - only in development mode
+    if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+      console.error(`=== GOOGLE API INITIALIZATION DEBUG ===`);
+      console.error(`Attempting to read credentials from: ${this.credentialsPath}`);
+      console.error(`Google import:`, typeof google);
+      console.error(`Google.auth:`, typeof google.auth);
+      console.error(`Google.calendar:`, typeof google.calendar);
+    }
+    let credentials;
+    try {
+      credentials = JSON.parse(
+        await fs.readFile(this.credentialsPath, "utf8")
+      );
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error(`Failed to read credentials file: ${error.message}`);
+      }
+      throw new Error(`Cannot read credentials file at ${this.credentialsPath}: ${error.message}`);
+    }
 
     // Handle both 'web' and 'installed' credential types
     const credentialData = credentials.web || credentials.installed;
@@ -360,15 +376,29 @@ class GoogleMeetAPI {
     // Store OAuth2 client for shared use
     this.auth = oAuth2Client;
 
-    // Initialize the calendar API (unchanged)
+    // Initialize the calendar API with debugging
+    if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+      console.error("Initializing Google Calendar API...");
+      console.error("Google object:", typeof google);
+      console.error("Google.calendar function:", typeof google.calendar);
+    }
+    
     this.calendar = google.calendar({ version: "v3", auth: oAuth2Client });
+    
+    if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+      console.error("Calendar object:", typeof this.calendar);
+      console.error("Calendar.calendars:", typeof this.calendar?.calendars);
+      console.error("Calendar.calendars.list:", typeof this.calendar?.calendars?.list);
+    }
 
     // Initialize Meet REST client for direct API access
     this.meetRestClient = new MeetRestClient(oAuth2Client);
 
     // Note: Now using direct REST API calls for Google Meet API v2/v2beta
     this.meet = null;
-    console.log("✅ Google Meet API v2/v2beta access enabled via REST client");
+    if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+      console.error("✅ Google Meet API v2/v2beta access enabled via REST client");
+    }
   }
 
   // ========== GOOGLE CALENDAR API v3 METHODS ==========
@@ -378,8 +408,16 @@ class GoogleMeetAPI {
    * @returns {Promise<Array>} - Array of calendar objects
    */
   async listCalendars(): Promise<ProcessedCalendar[]> {
+    if (!this.calendar) {
+      throw new Error("Calendar API not initialized. Please call initialize() first.");
+    }
+    
+    if (!this.calendar.calendarList || typeof this.calendar.calendarList.list !== 'function') {
+      throw new Error("Calendar API calendarList.list method is not available. Check googleapis initialization.");
+    }
+
     try {
-      const response = await this.calendar.calendars.list();
+      const response = await this.calendar.calendarList.list();
       const calendars = response.data.items || [];
 
       return calendars.map((calendar: GoogleCalendar) => ({
@@ -601,11 +639,13 @@ class GoogleMeetAPI {
     // Note: Using Calendar API with enhanced descriptions for all features
     // Google Meet link will be generated automatically by Calendar API
     if (coHosts.length > 0) {
-      console.info(
-        `Co-hosts will be documented in meeting description: ${coHosts.join(
-          ", "
-        )}`
-      );
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error(
+          `Co-hosts will be documented in meeting description: ${coHosts.join(
+            ", "
+          )}`
+        );
+      }
     }
 
     // Prepare attendees list in the format required by the API
@@ -1457,6 +1497,177 @@ class GoogleMeetAPI {
     };
 
     return meeting;
+  }
+
+  // ========== GOOGLE CALENDAR API v3 - ADDITIONAL METHODS ==========
+
+  /**
+   * Query free/busy information for calendars
+   * @param {string[]} calendarIds - Array of calendar IDs to query
+   * @param {string} timeMin - Start time (ISO 8601)
+   * @param {string} timeMax - End time (ISO 8601)
+   * @returns {Promise<Object>} - Free/busy information
+   */
+  async queryFreeBusy(calendarIds: string[], timeMin: string, timeMax: string): Promise<any> {
+    try {
+      const response = await this.calendar.freebusy.query({
+        requestBody: {
+          timeMin,
+          timeMax,
+          items: calendarIds.map(id => ({ id }))
+        }
+      });
+
+      return {
+        kind: response.data.kind,
+        timeMin: response.data.timeMin,
+        timeMax: response.data.timeMax,
+        calendars: response.data.calendars || {}
+      };
+    } catch (error) {
+      throw new Error(`Error querying free/busy: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create event using natural language (Quick Add)
+   * @param {string} calendarId - Calendar ID to add event to
+   * @param {string} text - Natural language text describing the event
+   * @returns {Promise<Object>} - Created event details
+   */
+  async quickAddEvent(calendarId: string, text: string): Promise<ProcessedEvent> {
+    try {
+      const response = await this.calendar.events.quickAdd({
+        calendarId,
+        text,
+        sendNotifications: true
+      });
+
+      const event = response.data;
+      return this._formatCalendarEvent(event);
+    } catch (error) {
+      throw new Error(`Error creating quick add event: ${error.message}`);
+    }
+  }
+
+  // ========== GOOGLE MEET API v2beta - SPACE MEMBERS MANAGEMENT ==========
+
+  /**
+   * Create a member (co-host) in a meeting space
+   * @param {string} spaceName - Name of the space (e.g., "spaces/abc-defg-hij")
+   * @param {string} email - Email of the user to add as member
+   * @param {string} role - Role to assign ("CO_HOST" or "ROLE_UNSPECIFIED")
+   * @returns {Promise<Object>} - Created member details
+   */
+  async createSpaceMember(spaceName: string, email: string, role: string = "CO_HOST"): Promise<any> {
+    try {
+      // Direct REST API call to Google Meet API v2beta
+      const url = `https://meet.googleapis.com/v2beta/${spaceName}/members`;
+      const body = {
+        email: email,
+        role: role
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${(await this.auth.getAccessToken()).token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error(`Error creating space member: ${error.message}`);
+    }
+  }
+
+  /**
+   * List members of a meeting space
+   * @param {string} spaceName - Name of the space (e.g., "spaces/abc-defg-hij")
+   * @param {number} pageSize - Maximum number of members to return
+   * @returns {Promise<Object>} - List of space members
+   */
+  async listSpaceMembers(spaceName: string, pageSize: number = 10): Promise<any> {
+    try {
+      // Direct REST API call to Google Meet API v2beta
+      const url = `https://meet.googleapis.com/v2beta/${spaceName}/members?pageSize=${pageSize}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${(await this.auth.getAccessToken()).token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error(`Error listing space members: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get details of a specific space member
+   * @param {string} memberName - Name of the member (e.g., "spaces/abc-defg-hij/members/member-id")
+   * @returns {Promise<Object>} - Member details
+   */
+  async getSpaceMember(memberName: string): Promise<any> {
+    try {
+      // Direct REST API call to Google Meet API v2beta
+      const url = `https://meet.googleapis.com/v2beta/${memberName}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${(await this.auth.getAccessToken()).token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error(`Error getting space member: ${error.message}`);
+    }
+  }
+
+  /**
+   * Delete a member from a meeting space
+   * @param {string} memberName - Name of the member (e.g., "spaces/abc-defg-hij/members/member-id")
+   * @returns {Promise<Object>} - Deletion confirmation
+   */
+  async deleteSpaceMember(memberName: string): Promise<any> {
+    try {
+      // Direct REST API call to Google Meet API v2beta
+      const url = `https://meet.googleapis.com/v2beta/${memberName}`;
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${(await this.auth.getAccessToken()).token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      // DELETE might return empty response
+      return { success: true, message: "Member deleted successfully" };
+    } catch (error) {
+      throw new Error(`Error deleting space member: ${error.message}`);
+    }
   }
 }
 
