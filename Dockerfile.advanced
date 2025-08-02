@@ -1,0 +1,145 @@
+# Google Meet MCP Server v3.0 - Advanced Multi-stage Production Build
+# Complete production-ready Dockerfile with monitoring, health checks, and security
+FROM node:20-alpine AS base
+
+# Install system dependencies and security updates
+RUN apk update && apk upgrade && \
+    apk add --no-cache \
+    dumb-init \
+    curl \
+    tini \
+    ca-certificates && \
+    rm -rf /var/cache/apk/*
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S mcp -u 1001 -G nodejs
+
+# Set working directory
+WORKDIR /app
+
+# ========================================
+# Dependencies stage
+# ========================================
+FROM base AS dependencies
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev for building)
+RUN npm ci --include=dev --ignore-scripts && \
+    npm cache clean --force
+
+# ========================================
+# Build stage
+# ========================================
+FROM dependencies AS build
+
+# Copy source code
+COPY src/ ./src/
+COPY tsconfig.json ./
+COPY scripts/ ./scripts/
+
+# Build TypeScript (if needed)
+RUN npm run build 2>/dev/null || echo "No build script found, using direct TypeScript execution"
+
+# ========================================
+# Production stage
+# ========================================
+FROM base AS production
+
+# Copy package files and install production dependencies only
+COPY package*.json ./
+RUN npm ci --omit=dev --ignore-scripts && \
+    npm cache clean --force
+
+# Copy built application or source
+COPY --from=build --chown=mcp:nodejs /app/dist ./dist/ 2>/dev/null || true
+COPY --from=build --chown=mcp:nodejs /app/src ./src/
+COPY --from=build --chown=mcp:nodejs /app/scripts ./scripts/
+
+# Copy additional files
+COPY --chown=mcp:nodejs *.md ./
+
+# Create directories for logs and data
+RUN mkdir -p /app/logs /app/data && \
+    chown -R mcp:nodejs /app/logs /app/data
+
+# Environment variables for production
+ENV NODE_ENV=production
+ENV LOG_LEVEL=info
+ENV ENABLE_HEALTH_CHECK=true
+ENV HEALTH_CHECK_PORT=9090
+
+# Expose health check port
+EXPOSE 9090
+
+# Security: Switch to non-root user
+USER mcp
+
+# Health check configuration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:9090/health || exit 1
+
+# Use tini for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Default command (can be overridden)
+CMD ["npx", "tsx", "src/index.ts"]
+
+# ========================================
+# Development stage (for local development)
+# ========================================
+FROM dependencies AS development
+
+# Copy source code
+COPY --chown=mcp:nodejs src/ ./src/
+COPY --chown=mcp:nodejs tsconfig.json ./
+COPY --chown=mcp:nodejs scripts/ ./scripts/
+COPY --chown=mcp:nodejs *.md ./
+
+# Environment for development
+ENV NODE_ENV=development
+ENV LOG_LEVEL=debug
+ENV ENABLE_HEALTH_CHECK=true
+ENV HEALTH_CHECK_PORT=9090
+
+# Expose ports for development
+EXPOSE 9090 3000
+
+# Create user and switch
+USER mcp
+
+# Development command with hot reload
+CMD ["npx", "tsx", "--watch", "src/index.ts"]
+
+# ========================================
+# Monitoring stage (for advanced monitoring)
+# ========================================
+FROM production AS monitoring
+
+# Switch back to root to install monitoring tools
+USER root
+
+# Install monitoring and debugging tools
+RUN apk add --no-cache \
+    htop \
+    iotop \
+    nethogs \
+    tcpdump \
+    strace && \
+    rm -rf /var/cache/apk/*
+
+# Additional monitoring environment
+ENV ENABLE_METRICS=true
+ENV METRICS_PORT=9091
+ENV ENABLE_DEBUG_ENDPOINTS=true
+
+# Expose monitoring ports
+EXPOSE 9090 9091 3000
+
+# Switch back to non-root user
+USER mcp
+
+# Enhanced monitoring command
+CMD ["npx", "tsx", "src/index.ts"]

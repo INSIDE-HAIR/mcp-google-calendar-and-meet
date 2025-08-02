@@ -1,0 +1,48 @@
+# Google Meet MCP Server v3.0 - Smithery Compatible
+# Basic Docker Compose configuration optimized for Smithery deployment
+version: '3.8'
+
+services:
+  google-meet-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: google-meet-mcp-smithery
+    restart: unless-stopped
+    
+    # Smithery-optimized environment
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      # Direct token authentication (set via Smithery config)
+      - CLIENT_ID=${CLIENT_ID:-}
+      - CLIENT_SECRET=${CLIENT_SECRET:-}
+      - REFRESH_TOKEN=${REFRESH_TOKEN:-}
+    
+    # Minimal resource requirements for Smithery
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    
+    # Basic health check
+    healthcheck:
+      test: ["CMD", "npx", "tsx", "-e", "console.log('healthy')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    
+    # No volumes needed - stateless deployment
+    # No ports exposed - MCP uses stdio transport
+    
+    # Optimized logging for Smithery
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "2"

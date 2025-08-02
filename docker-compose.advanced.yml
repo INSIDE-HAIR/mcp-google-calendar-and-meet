@@ -1,0 +1,308 @@
+# Google Meet MCP Server v3.0 - Advanced Production with Full Monitoring
+# Complete production stack with Prometheus, Grafana, and comprehensive monitoring
+version: '3.8'
+
+services:
+  # ======================================================================
+  # Main MCP Server - Advanced Production
+  # ======================================================================
+  google-meet-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.advanced
+      target: monitoring  # Use monitoring stage
+    container_name: google-meet-mcp-advanced
+    restart: unless-stopped
+    
+    # Advanced environment configuration
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      
+      # Direct token authentication
+      - CLIENT_ID=${CLIENT_ID:-}
+      - CLIENT_SECRET=${CLIENT_SECRET:-}
+      - REFRESH_TOKEN=${REFRESH_TOKEN:-}
+      
+      # Advanced monitoring settings
+      - ENABLE_HEALTH_CHECK=true
+      - HEALTH_CHECK_PORT=9090
+      - ENABLE_METRICS=true
+      - METRICS_PORT=9091
+      - ENABLE_DEBUG_ENDPOINTS=true
+      
+      # Performance optimizations
+      - NODE_OPTIONS=--enable-source-maps --max-old-space-size=512
+    
+    # Load additional config from env file
+    env_file:
+      - .env.local
+    
+    # Comprehensive volume mounts
+    volumes:
+      # Credentials (read-only for security)
+      - ./credentials.json:/app/credentials.json:ro
+      - ./token.json:/app/token.json:rw
+      # Persistent data and logs
+      - mcp_logs:/app/logs
+      - mcp_data:/app/data
+      # Configuration files
+      - ./docs:/app/docs:ro
+    
+    # Network configuration
+    ports:
+      - "9090:9090"  # Health check endpoint
+      - "9091:9091"  # Metrics endpoint
+      - "3000:3000"  # HTTP transport (if configured)
+    
+    # Advanced health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+        reservations:
+          memory: 512M
+          cpus: '1.0'
+    
+    # Advanced logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+        compress: "true"
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    
+    # Dependencies
+    depends_on:
+      prometheus:
+        condition: service_started
+    
+    # Connect to monitoring network
+    networks:
+      - monitoring
+      - default
+
+  # ======================================================================
+  # Prometheus - Metrics Collection
+  # ======================================================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: google-meet-prometheus
+    restart: unless-stopped
+    
+    # Prometheus configuration
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/rules/:/etc/prometheus/rules/:ro
+      - prometheus_data:/prometheus
+    
+    # Prometheus command line options
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    
+    # Network configuration
+    ports:
+      - "9092:9090"  # Prometheus web UI
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    
+    # Networks
+    networks:
+      - monitoring
+
+  # ======================================================================
+  # Grafana - Metrics Visualization
+  # ======================================================================
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: google-meet-grafana
+    restart: unless-stopped
+    
+    # Grafana configuration
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_DOMAIN=localhost
+      - GF_SMTP_ENABLED=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+    
+    # Grafana data and configuration
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    
+    # Network configuration
+    ports:
+      - "3001:3000"  # Grafana web UI
+    
+    # Dependencies
+    depends_on:
+      - prometheus
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    
+    # Networks
+    networks:
+      - monitoring
+
+  # ======================================================================
+  # AlertManager - Alert Management (Optional)
+  # ======================================================================
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: google-meet-alertmanager
+    restart: unless-stopped
+    
+    # AlertManager configuration
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    
+    # AlertManager command options
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+      - '--web.route-prefix=/'
+    
+    # Network configuration
+    ports:
+      - "9093:9093"  # AlertManager web UI
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    
+    # Networks
+    networks:
+      - monitoring
+    
+    # Only run with monitoring profile
+    profiles:
+      - monitoring
+
+  # ======================================================================
+  # Node Exporter - System Metrics (Optional)
+  # ======================================================================
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: google-meet-node-exporter
+    restart: unless-stopped
+    
+    # Node exporter configuration
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    
+    # Mount host filesystem
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    
+    # Network configuration
+    ports:
+      - "9100:9100"  # Node exporter metrics
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
+          cpus: '0.25'
+    
+    # Networks
+    networks:
+      - monitoring
+    
+    # Only run with monitoring profile
+    profiles:
+      - monitoring
+
+# ========================================================================
+# Named Volumes for Data Persistence
+# ========================================================================
+volumes:
+  # Application data
+  mcp_logs:
+    driver: local
+    name: google_meet_mcp_logs_advanced
+  mcp_data:
+    driver: local
+    name: google_meet_mcp_data_advanced
+  
+  # Monitoring data
+  prometheus_data:
+    driver: local
+    name: google_meet_prometheus_data
+  grafana_data:
+    driver: local
+    name: google_meet_grafana_data
+  alertmanager_data:
+    driver: local
+    name: google_meet_alertmanager_data
+
+# ========================================================================
+# Network Configuration
+# ========================================================================
+networks:
+  # Default application network
+  default:
+    name: google_meet_mcp_advanced
+    driver: bridge
+  
+  # Monitoring network
+  monitoring:
+    name: google_meet_monitoring
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
