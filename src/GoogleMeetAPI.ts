@@ -30,7 +30,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { google, calendar_v3 } from "googleapis";
-import open from "open";
+// Dynamic import for 'open' to avoid Smithery compatibility issues
 import http from "http";
 import { URL } from "url";
 import { GoogleApiErrorHandler } from "./errors/GoogleApiErrorHandler.js";
@@ -1093,7 +1093,7 @@ class GoogleMeetAPI {
         }
       });
 
-      server.listen(3000, () => {
+      server.listen(3000, async () => {
         const authUrl = oAuth2Client.generateAuthUrl({
           access_type: "offline",
           scope: SCOPES,
@@ -1104,11 +1104,17 @@ class GoogleMeetAPI {
         console.error("🌐 Opening browser for authentication...");
         console.error(`🔗 If browser doesn't open, visit: ${authUrl}`);
 
-        // Try to open browser
-        open(authUrl).catch(() => {
-          console.error("❌ Could not open browser automatically");
+        // Try to open browser (dynamic import for compatibility)
+        try {
+          const { default: open } = await import("open");
+          open(authUrl).catch(() => {
+            console.error("❌ Could not open browser automatically");
+            console.error(`📋 Please manually visit: ${authUrl}`);
+          });
+        } catch {
+          console.error("⚠️ Browser opening not available in this environment");
           console.error(`📋 Please manually visit: ${authUrl}`);
-        });
+        }
 
         // Timeout after 5 minutes
         setTimeout(() => {

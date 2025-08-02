@@ -10,7 +10,7 @@
 import dotenv from "dotenv";
 import fs from "fs/promises";
 import { google } from "googleapis";
-import open from "open";
+// Dynamic import for 'open' to avoid Smithery compatibility issues
 import path from "path";
 import readline from "readline";
 
@@ -133,18 +133,23 @@ async function main() {
     console.log("=======================================================\n");
 
     console.log("Opening browser for authentication...");
-    await open(authUrl);
-
-    // Also open the OAuth code extractor helper page
-    const extractorPath = path.join(process.cwd(), "index.html");
     try {
-      await fs.access(extractorPath);
-      console.log("Opening OAuth code extractor helper...");
-      await open(`file://${extractorPath}`);
-      console.log("💡 Use the OAuth Code Extractor page to easily copy your authorization code!");
-    } catch (error) {
-      // Extractor page doesn't exist, continue without it
-      console.log("📝 OAuth code extractor not found - please manually copy the code from the URL");
+      const { default: open } = await import("open");
+      await open(authUrl);
+
+      // Also open the OAuth code extractor helper page
+      const extractorPath = path.join(process.cwd(), "index.html");
+      try {
+        await fs.access(extractorPath);
+        console.log("Opening OAuth code extractor helper...");
+        await open(`file://${extractorPath}`);
+        console.log("💡 Use the OAuth Code Extractor page to easily copy your authorization code!");
+      } catch {
+        console.log("⚠️ OAuth code extractor helper not found");
+      }
+    } catch {
+      console.log("⚠️ Browser opening not available in this environment");
+      console.log(`📋 Please manually visit: ${authUrl}`);
     }
 
     // Wait for user input
