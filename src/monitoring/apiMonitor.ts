@@ -1,6 +1,29 @@
 /**
- * API Monitor for Google Meet MCP Server
- * Monitors Google API calls and performance
+ * API Monitor for Google Meet MCP Server v3.0
+ * 
+ * Comprehensive monitoring system for Google Calendar API v3 and Meet API v2 calls.
+ * Integrates with the v3.0 monitoring system providing real-time API performance tracking,
+ * rate limit detection, quota management, and debugging capabilities.
+ * 
+ * Features:
+ * - Real-time API call monitoring and performance tracking
+ * - Rate limit detection and intelligent retry recommendations  
+ * - Quota usage tracking and threshold alerts
+ * - Integration with health check endpoints (/health, /metrics, /api-status)
+ * - Debug mode support with detailed logging
+ * - Prometheus metrics generation for production monitoring
+ * 
+ * Usage with v3.0 Debug Modes:
+ * - LOG_LEVEL=debug: Detailed API call logging with request/response info
+ * - DEBUG_CALENDAR_API=true: Monitor only Calendar API v3 calls
+ * - DEBUG_MEET_API=true: Monitor only Meet API v2 calls
+ * - ENABLE_HEALTH_CHECK=true: Expose monitoring data via HTTP endpoints
+ * 
+ * Monitoring Endpoints Integration:
+ * - /health: Includes API connectivity status from this monitor
+ * - /metrics: Includes performance metrics collected by this monitor  
+ * - /api-status: Real-time API health overview from this monitor
+ * - /api/performance: Detailed performance analytics from this monitor
  */
 
 import { MetricsCollector } from './metrics.js';

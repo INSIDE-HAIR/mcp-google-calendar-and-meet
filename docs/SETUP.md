@@ -96,11 +96,29 @@ gcloud services enable meet.googleapis.com
 
 ## ⚙️ **Configuration**
 
-### **Method 1: Environment Variables (Recommended)**
+### **Method 1: Direct Token Authentication (Recommended)**
 ```bash
-# Create .env file
+# Create .env file with direct tokens
 cat > .env << 'EOF'
-# Google Meet MCP Server Configuration
+# Google Meet MCP Server Configuration - Direct Tokens
+CLIENT_ID="your-client-id.apps.googleusercontent.com"
+CLIENT_SECRET="GOCSPX-your-client-secret"
+REFRESH_TOKEN="1//your-refresh-token"
+
+# Optional settings
+NODE_ENV=development
+LOG_LEVEL=info
+EOF
+
+# Secure the .env file
+chmod 600 .env
+```
+
+### **Method 2: File-based Authentication (Legacy)**
+```bash
+# Create .env file with credential files
+cat > .env << 'EOF'
+# Google Meet MCP Server Configuration - File-based
 G_OAUTH_CREDENTIALS="/absolute/path/to/your/credentials.json"
 
 # Optional settings
@@ -112,7 +130,7 @@ EOF
 chmod 600 .env
 ```
 
-### **Method 2: Direct File Paths**
+### **Method 3: Separate File Paths (Legacy)**
 ```bash
 # Create .env file with separate paths
 cat > .env << 'EOF'
@@ -203,6 +221,25 @@ node scripts/configure-claude-desktop.js
 - **Linux**: `~/.config/claude/claude_desktop_config.json`
 
 **2. Add MCP Server Configuration**:
+
+**Option A: Direct Token Configuration (Recommended)**:
+```json
+{
+  "mcpServers": {
+    "google-meet-mcp-server": {
+      "command": "npx",
+      "args": ["tsx", "/absolute/path/to/google-meet-mcp-server/src/index.ts"],
+      "env": {
+        "CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "REFRESH_TOKEN": "1//your-refresh-token"
+      }
+    }
+  }
+}
+```
+
+**Option B: File-based Configuration (Legacy)**:
 ```json
 {
   "mcpServers": {
@@ -226,7 +263,9 @@ node scripts/configure-claude-desktop.js
       "args": ["run", "start"],
       "cwd": "/absolute/path/to/google-meet-mcp-server",
       "env": {
-        "G_OAUTH_CREDENTIALS": "/absolute/path/to/your/credentials.json",
+        "CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+        "CLIENT_SECRET": "GOCSPX-your-client-secret",
+        "REFRESH_TOKEN": "1//your-refresh-token",
         "LOG_LEVEL": "debug"
       }
     }
@@ -264,7 +303,7 @@ ls -la *.token.json
 ### **Step 3: Test Claude Desktop Connection**
 1. **Open Claude Desktop**
 2. **Ask Claude**: "What Google Meet tools do you have available?"
-3. **Expected Response**: List of 17 tools (5 Calendar + 12 Meet API tools)
+3. **Expected Response**: List of 23 tools (6 Calendar + 17 Meet API tools)
 
 ### **Step 4: Test Basic Functionality**
 ```bash
@@ -337,12 +376,15 @@ docker-compose down
 
 ### **Environment Variables Reference**
 ```bash
-# Primary configuration
-G_OAUTH_CREDENTIALS="/path/to/credentials.json"          # Recommended method
+# Primary configuration (recommended)
+CLIENT_ID="your-client-id.apps.googleusercontent.com"   # OAuth2 Client ID
+CLIENT_SECRET="GOCSPX-your-client-secret"                # OAuth2 Client Secret
+REFRESH_TOKEN="1//your-refresh-token"                    # OAuth2 Refresh Token
 
-# Alternative configuration
-GOOGLE_MEET_CREDENTIALS_PATH="/path/to/credentials.json" # Credentials file
-GOOGLE_MEET_TOKEN_PATH="/path/to/token.json"             # Token storage
+# Legacy file-based configuration
+G_OAUTH_CREDENTIALS="/path/to/credentials.json"          # Credentials file method
+GOOGLE_MEET_CREDENTIALS_PATH="/path/to/credentials.json" # Alternative credentials file
+GOOGLE_MEET_TOKEN_PATH="/path/to/token.json"             # Token storage file
 
 # Runtime configuration
 NODE_ENV="production"                                     # Environment mode

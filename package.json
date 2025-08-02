@@ -34,7 +34,8 @@
     "test:legacy:stable": "node test/test-stable-api.ts",
     "coverage": "vitest run --coverage --reporter=text-summary",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf build"
+    "clean": "rm -rf build",
+    "generate-refresh-token": "node scripts/generate-refresh-token.js"
   },
   "keywords": [
     "google-meet",

@@ -1,6 +1,6 @@
 # 📊 Monitoring and Health Checks
 
-Google Meet MCP Server v3.0 includes a comprehensive monitoring system for production deployments, providing health checks, performance metrics, and operational visibility with enhanced enterprise features. Monitors all 21 validated tools across Calendar API v3 and Meet API v2.
+Google Meet MCP Server v3.0 includes a comprehensive monitoring system for production deployments, providing health checks, performance metrics, and operational visibility with enhanced enterprise features. Monitors all 23 validated tools across Calendar API v3 and Meet API v2.
 
 ## 🚀 Quick Start
 
@@ -9,11 +9,14 @@ Google Meet MCP Server v3.0 includes a comprehensive monitoring system for produ
 Monitoring is enabled by default. To configure:
 
 ```bash
-# Enable/disable monitoring endpoints (default: enabled)
-export ENABLE_MONITORING=true
+# Enable/disable health check endpoints (default: disabled in production)
+export ENABLE_HEALTH_CHECK=true
 
-# Set monitoring port (default: 3001)
-export MONITORING_PORT=3001
+# Set health check port (default: 9090)
+export HEALTH_CHECK_PORT=9090
+
+# Enable monitoring and debugging (comprehensive logging)
+export LOG_LEVEL=debug
 
 # Optional: Basic authentication for monitoring endpoints
 export MONITORING_USERNAME="admin"
@@ -23,24 +26,36 @@ export MONITORING_PASSWORD="secure-password"
 ### Start Server with Monitoring
 
 ```bash
-# Standard startup
+# Standard startup with direct token authentication (v3.0)
+export CLIENT_ID="your-client-id.apps.googleusercontent.com"
+export CLIENT_SECRET="GOCSPX-your-client-secret"
+export REFRESH_TOKEN="1//your-refresh-token"
+export ENABLE_HEALTH_CHECK=true
+export LOG_LEVEL=debug
 npm start
 
-# With monitoring configuration
-ENABLE_MONITORING=true MONITORING_PORT=9090 npm start
+# Legacy file-based authentication
+G_OAUTH_CREDENTIALS="/path/to/credentials.json" ENABLE_HEALTH_CHECK=true LOG_LEVEL=debug npm start
+
+# With custom monitoring configuration
+ENABLE_HEALTH_CHECK=true HEALTH_CHECK_PORT=9090 npm start
 ```
 
 The server will display:
 ```
-Google Meet MCP server starting on stdio...
-Monitoring endpoints started on port 3001
+Google Meet MCP Server v3.0 starting...
+✅ Direct token authentication successful
+✅ 23 tools registered successfully
+🔍 Health check endpoint available at http://localhost:9090/health
+📊 Metrics endpoint available at http://localhost:9090/metrics
 Google Meet MCP server connected
 ```
 
 ## 🚀 New in v3.0
 
 ### Enhanced Production Features
-- **21 Tool Validation**: Complete Zod validation for all Calendar v3 and Meet v2 tools
+- **23 Tool Validation**: Complete Zod validation for all Calendar v3 and Meet v2 tools
+- **Direct Token Authentication**: Simplified authentication using CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN
 - **TypeScript Production Build**: Compiled JavaScript for optimal performance
 - **Advanced Error Tracking**: Categorized error handling with business logic validation
 - **Rate Limit Intelligence**: Smart detection and retry recommendations
@@ -54,13 +69,73 @@ Google Meet MCP server connected
 - **Basic Authentication**: Secure monitoring endpoint access
 - **Comprehensive Alerting**: Ready-to-use alert configurations
 
+### Debug Modes and Monitoring Integration
+Google Meet MCP Server v3.0 integrates comprehensive debugging capabilities with the monitoring system:
+
+#### **LOG_LEVEL Modes**
+```bash
+# DEBUG Mode - Complete operation logging
+export LOG_LEVEL=debug
+# - Logs all API calls with request/response details
+# - Shows authentication flow steps
+# - Displays tool validation details
+# - Tracks performance metrics in real-time
+
+# INFO Mode - Standard operational logging (default)
+export LOG_LEVEL=info
+# - Key operation confirmations
+# - Authentication status updates
+# - Tool registration confirmations
+# - Error notifications
+
+# WARN Mode - Warnings and errors only
+export LOG_LEVEL=warn
+# - Authentication warnings
+# - API rate limit notifications
+# - Performance degradation alerts
+# - Non-critical errors
+
+# ERROR Mode - Critical errors only
+export LOG_LEVEL=error
+# - Authentication failures
+# - API connection errors
+# - Tool execution failures
+# - System-level errors
+```
+
+#### **Health Check Integration with Debugging**
+When `ENABLE_HEALTH_CHECK=true` and `LOG_LEVEL=debug` are combined:
+- Real-time monitoring data is exposed via HTTP endpoints
+- Detailed health status includes authentication state
+- API call performance is tracked and exposed
+- Debug logs correlate with monitoring metrics
+
+#### **Monitoring Endpoints for Claude Desktop Debugging**
+```bash
+# Monitor live status while using Claude Desktop
+curl http://localhost:9090/health
+# Shows: OAuth status, API connectivity, tool availability
+
+# Track real-time metrics during Claude interactions
+curl http://localhost:9090/metrics  
+# Shows: Request counts, response times, error rates per tool
+
+# Debug API performance issues
+curl http://localhost:9090/api-status
+# Shows: Individual API health, rate limits, quota usage
+
+# Monitor system resources during heavy usage
+curl http://localhost:9090/system
+# Shows: Memory usage, CPU utilization, uptime
+```
+
 ## 📈 Available Endpoints
 
 ### Health Check Endpoints
 
 #### `/health` - Comprehensive Health Check
 ```bash
-curl http://localhost:3001/health
+curl http://localhost:9090/health
 ```
 
 **Response:**
@@ -122,7 +197,7 @@ curl http://localhost:3001/health
 
 #### `/health/live` - Liveness Probe
 ```bash
-curl http://localhost:3001/health/live
+curl http://localhost:9090/health/live
 ```
 
 Simple check for Kubernetes liveness probes:
@@ -136,7 +211,7 @@ Simple check for Kubernetes liveness probes:
 
 #### `/health/ready` - Readiness Probe
 ```bash
-curl http://localhost:3001/health/ready
+curl http://localhost:9090/health/ready
 ```
 
 Check if service is ready to accept requests:
@@ -154,7 +229,7 @@ Check if service is ready to accept requests:
 
 #### `/metrics` - JSON Metrics
 ```bash
-curl http://localhost:3001/metrics
+curl http://localhost:9090/metrics
 ```
 
 **Response:**
@@ -190,7 +265,7 @@ curl http://localhost:3001/metrics
       "last_called": "2025-08-01T11:58:00.000Z",
       "error_rate": 1.6
     }
-    // ... metrics for all 21 tools available
+    // ... metrics for all 23 tools available
   },
   "api_performance": {
     "calendar": {
@@ -217,7 +292,7 @@ curl http://localhost:3001/metrics
 
 #### `/metrics/prometheus` - Prometheus Format
 ```bash
-curl http://localhost:3001/metrics/prometheus
+curl http://localhost:9090/metrics/prometheus
 ```
 
 **Response:**
@@ -243,7 +318,7 @@ gmcp_tool_duration_avg_ms{tool="calendar_v3_list_events"} 180.2
 
 #### `/api/status` - API Health Overview
 ```bash
-curl http://localhost:3001/api/status
+curl http://localhost:9090/api/status
 ```
 
 **Response:**
@@ -276,7 +351,7 @@ curl http://localhost:3001/api/status
 
 #### `/api/performance` - Detailed Performance
 ```bash
-curl http://localhost:3001/api/performance
+curl http://localhost:9090/api/performance
 ```
 
 Includes recent events, active calls, and detailed performance metrics.
@@ -286,15 +361,29 @@ Includes recent events, active calls, and detailed performance metrics.
 ### Environment Variables
 
 ```bash
-# Monitoring configuration
-ENABLE_MONITORING=true          # Enable/disable monitoring endpoints
-MONITORING_PORT=3001            # Port for monitoring endpoints
+# Health check configuration (v3.0)
+ENABLE_HEALTH_CHECK=true        # Enable/disable health check endpoints
+HEALTH_CHECK_PORT=9090          # Port for health check endpoints
+LOG_LEVEL=debug                 # Logging level (debug, info, warn, error)
+
+# Authentication configuration (v3.0 - two methods)
+# Method 1: Direct Token Authentication (Recommended)
+CLIENT_ID="client-id.apps.googleusercontent.com"
+CLIENT_SECRET="GOCSPX-client-secret"
+REFRESH_TOKEN="1//refresh-token"
+
+# Method 2: File-based Authentication (Legacy)
+G_OAUTH_CREDENTIALS="/path/to/credentials.json"
+
+# Optional monitoring features
 MONITORING_USERNAME=admin       # Basic auth username (optional)
 MONITORING_PASSWORD=secret      # Basic auth password (optional)
-
-# Health check configuration
 HEALTH_CHECK_TIMEOUT=5000       # Health check timeout in ms
 HEALTH_CHECK_INTERVAL=30000     # Health check interval in ms
+
+# Debug modes
+DEBUG_CALENDAR_API=true         # Debug Calendar API calls only
+DEBUG_MEET_API=true             # Debug Meet API calls only
 ```
 
 ### Programmatic Configuration

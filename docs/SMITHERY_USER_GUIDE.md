@@ -148,7 +148,18 @@ chmod 600 ~/.config/mcp/google-meet-credentials.json
 
 ### **B. Configuración en Smithery**
 
-#### **Opción 1: Configuración Simple (Recomendada)**
+#### **Opción 1: Direct Token Authentication (Recomendada v3.0)**
+```yaml
+# En la interfaz de Smithery, completar con tokens directos:
+CLIENT_ID: "your-client-id.apps.googleusercontent.com"
+CLIENT_SECRET: "GOCSPX-your-client-secret"
+REFRESH_TOKEN: "1//your-refresh-token"
+
+# Obtener estos valores desde:
+# Google Cloud Console → APIs y servicios → Credenciales → [Tu cliente OAuth] → Detalles
+```
+
+#### **Opción 2: File-based Authentication (Legacy)**
 ```yaml
 # En la interfaz de Smithery, completar:
 Google OAuth Credentials: /ruta/completa/a/tus/credenciales.json
@@ -163,7 +174,7 @@ C:\Users\tuusuario\Documents\MCP-Credentials\google-meet-credentials.json
 /home/tuusuario/.config/mcp/google-meet-credentials.json
 ```
 
-#### **Opción 2: Configuración Avanzada (Para usuarios expertos)**
+#### **Opción 3: Configuración Avanzada (Para usuarios expertos)**
 ```yaml
 Google Meet Credentials Path: /ruta/a/credentials.json
 Google Meet Token Path: /ruta/a/token.json
@@ -224,9 +235,9 @@ Si la integración automática no funciona:
    ¿Qué herramientas de Google Meet tienes disponibles?
    ```
 
-2. **Deberías ver 17 herramientas**:
-   - 5 herramientas de Calendar API v3
-   - 12 herramientas de Meet API v2
+2. **Deberías ver 23 herramientas**:
+   - 6 herramientas de Calendar API v3
+   - 17 herramientas de Meet API v2
 
 ### **B. Prueba Básica**
 
@@ -294,7 +305,8 @@ Permisos: Agregar miembros del equipo como "Editor"
 #### **2. Configuración Individual en Smithery**
 - ✅ **Cada persona configura su propia instancia** en Smithery
 - ✅ **Usar la misma versión** del servidor (v3.0)
-- ✅ **Seguir las mismas ubicaciones** de archivos
+- ✅ **Preferir Direct Token Authentication** para simplicidad
+- ✅ **Seguir las mismas ubicaciones** de archivos (si usa file-based)
 
 ---
 

@@ -92,7 +92,9 @@ export interface ProcessEnv {
   GOOGLE_MEET_TOKEN_PATH?: string;
   DEBUG?: string;
   LOG_LEVEL?: string;
-  MEET_ENABLE_BETA?: string;
+  CLIENT_ID?: string;
+  CLIENT_SECRET?: string;
+  REFRESH_TOKEN?: string;
   MEET_MAX_RETRIES?: string;
   MEET_TIMEOUT_MS?: string;
 }

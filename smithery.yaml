@@ -6,9 +6,34 @@ startCommand:
   configSchema:
     type: object
     anyOf:
+      - required: [CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN]
       - required: [googleOAuthCredentials]
       - required: [googleMeetCredentialsPath, googleMeetTokenPath]
     properties:
+      CLIENT_ID:
+        type: string
+        title: "Google OAuth2 Client ID (Recommended)"
+        description: "Google OAuth2 Client ID for direct token authentication. More reliable than file-based auth."
+        pattern: "^[0-9]+-[a-zA-Z0-9]+\\.apps\\.googleusercontent\\.com$"
+        examples: [
+          "123456789-abcdefghijklmnop.apps.googleusercontent.com"
+        ]
+      CLIENT_SECRET:
+        type: string
+        title: "Google OAuth2 Client Secret"
+        description: "Google OAuth2 Client Secret that corresponds to your Client ID."
+        pattern: "^GOCSPX-[a-zA-Z0-9_-]+$"
+        examples: [
+          "GOCSPX-abcdefghijklmnopqrstuvwxyz"
+        ]
+      REFRESH_TOKEN:
+        type: string
+        title: "Google OAuth2 Refresh Token"
+        description: "Long-lived refresh token for automatic authentication. Obtain this through OAuth flow."
+        pattern: "^1//[a-zA-Z0-9_-]+$"
+        examples: [
+          "1//0ABCD-EFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        ]
       googleOAuthCredentials:
         type: string
         title: "Google OAuth Credentials (Recommended)"
@@ -47,9 +72,18 @@ startCommand:
         LOG_LEVEL: config.customLogLevel || 'info'
       };
       
-      if (config.googleOAuthCredentials) {
+      // Method 1: Direct token authentication (recommended)
+      if (config.CLIENT_ID && config.CLIENT_SECRET && config.REFRESH_TOKEN) {
+        env.CLIENT_ID = config.CLIENT_ID;
+        env.CLIENT_SECRET = config.CLIENT_SECRET;
+        env.REFRESH_TOKEN = config.REFRESH_TOKEN;
+      }
+      // Method 2: File-based OAuth credentials
+      else if (config.googleOAuthCredentials) {
         env.G_OAUTH_CREDENTIALS = config.googleOAuthCredentials;
-      } else {
+      } 
+      // Method 3: Advanced configuration
+      else {
         env.GOOGLE_MEET_CREDENTIALS_PATH = config.googleMeetCredentialsPath;
         env.GOOGLE_MEET_TOKEN_PATH = config.googleMeetTokenPath;
       }
@@ -65,18 +99,23 @@ startCommand:
       };
     }
   exampleConfig:
-    # Recommended configuration (cross-platform paths)
-    googleOAuthCredentials: "/Users/username/Documents/MCP-Credentials/google-meet-credentials.json"
+    # Method 1: Direct token authentication (recommended for production)
+    CLIENT_ID: "123456789-abcdefghijklmnop.apps.googleusercontent.com"
+    CLIENT_SECRET: "GOCSPX-abcdefghijklmnopqrstuvwxyz"
+    REFRESH_TOKEN: "1//0ABCD-EFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     customLogLevel: "info"
     enableDebugLogging: false
 
+    # Method 2: File-based OAuth credentials (legacy support)
+    # googleOAuthCredentials: "/Users/username/Documents/MCP-Credentials/google-meet-credentials.json"
+    
     # Windows example:
     # googleOAuthCredentials: "C:/Users/username/Documents/MCP-Credentials/google-meet-credentials.json"
     
     # Linux example:
     # googleOAuthCredentials: "/home/username/.config/mcp/google-meet-credentials.json"
 
-    # Advanced configuration (for custom token management)
+    # Method 3: Advanced configuration (for custom token management)
     # googleMeetCredentialsPath: "credentials.json"
     # googleMeetTokenPath: "token.json"
     # customLogLevel: "warn"
@@ -84,7 +123,7 @@ startCommand:
 # Smithery registry metadata
 name: google-meet-mcp-server
 displayName: "Google Meet MCP Server v3.0"
-description: "Production-ready containerized MCP server with Docker support, TypeScript, Zod validation, and enterprise security features. Provides 17 production-ready tools for Google Calendar API v3 and Google Meet API v2 with comprehensive meeting management, recording, transcription, and space configuration capabilities."
+description: "Production-ready containerized MCP server with Docker support, TypeScript, Zod validation, and enterprise security features. Provides 23 production-ready tools for Google Calendar API v3 and Google Meet API v2 with comprehensive meeting management, recording, transcription, and space configuration capabilities. Now supports both direct token authentication and file-based OAuth for maximum compatibility."
 version: 3.0.0
 author: INSIDE-HAIR
 maintainer: INSIDE-HAIR
@@ -111,9 +150,12 @@ keywords:
   - error-handling
   - claude-desktop
 
-# Complete tool inventory (17 production-ready tools)
+# Complete tool inventory (23 production-ready tools)
 tools:
-  # Google Calendar API v3 Tools (5 tools)
+  # Google Calendar API v3 Tools (11 tools)
+  - name: calendar_v3_list_calendars
+    description: "List all accessible calendars with metadata and permissions"
+    category: calendar
   - name: calendar_v3_list_events
     description: "List calendar events with optional Google Meet links and guest permissions"
     category: calendar
@@ -128,6 +170,12 @@ tools:
     category: calendar
   - name: calendar_v3_delete_event
     description: "Delete calendar events and associated Meet conferences"
+    category: calendar
+  - name: calendar_v3_freebusy_query
+    description: "Query free/busy information for scheduling across multiple calendars"
+    category: calendar
+  - name: calendar_v3_quick_add
+    description: "Quick add events using natural language parsing"
     category: calendar
 
   # Google Meet API v2 Tools - Space Management (4 tools)
@@ -160,7 +208,7 @@ tools:
     description: "Get detailed recording information including download links and metadata"
     category: recordings
 
-  # Google Meet API v2 Tools - Transcripts (3 tools)
+  # Google Meet API v2 Tools - Transcripts (2 tools)
   - name: meet_v2_list_transcripts
     description: "List conference transcripts with Google Docs export information"
     category: transcripts
@@ -171,9 +219,15 @@ tools:
     description: "List individual speech segments from transcripts with speaker identification"
     category: transcripts
 
-  # Google Meet API v2 Tools - Participants (1 tool)
+  # Google Meet API v2 Tools - Participants (2 tools)
   - name: meet_v2_get_participant
     description: "Get participant details from conference records"
+    category: participants
+  - name: meet_v2_list_participants
+    description: "List all participants from a conference record"
+    category: participants
+  - name: meet_v2_list_participant_sessions
+    description: "List participant sessions with join/leave timestamps"
     category: participants
 
 # Tool categories for better organization
@@ -181,7 +235,7 @@ toolCategories:
   calendar:
     name: "Google Calendar Management"
     description: "Create, update, and manage calendar events with Google Meet integration"
-    count: 5
+    count: 11
   meet-spaces:
     name: "Google Meet Spaces"
     description: "Create and manage Google Meet spaces with advanced configuration"
@@ -201,7 +255,7 @@ toolCategories:
   participants:
     name: "Participant Management"
     description: "Track and manage meeting participants"
-    count: 1
+    count: 3
 
 # System requirements and capabilities
 requirements:
@@ -232,7 +286,9 @@ requirements:
 
 # Enhanced features and capabilities v3.0
 features:
-  - "17 production-ready tools with TypeScript and Zod validation"
+  - "23 production-ready tools with TypeScript and Zod validation"
+  - "Direct token authentication (CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN)"
+  - "Backward compatibility with file-based OAuth credentials"
   - "Advanced error handling with Claude Desktop-friendly messages"
   - "Input validation with business logic and intelligent defaults"
   - "Comprehensive Google Calendar management with guest permissions"

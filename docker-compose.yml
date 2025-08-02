@@ -18,8 +18,15 @@ services:
     environment:
       - NODE_ENV=development
       - LOG_LEVEL=debug
+      
+      # Method 1: Direct token authentication (recommended)
+      # Uncomment and set your real credentials:
+      # - CLIENT_ID=your-client-id.apps.googleusercontent.com
+      # - CLIENT_SECRET=GOCSPX-your-client-secret
+      # - REFRESH_TOKEN=1//your-refresh-token
+      
+      # Method 2: File-based OAuth credentials (legacy)
       - G_OAUTH_CREDENTIALS=/app/credentials.json
-      # Alternative configuration
       - GOOGLE_MEET_CREDENTIALS_PATH=/app/credentials.json
       - GOOGLE_MEET_TOKEN_PATH=/app/token.json
     

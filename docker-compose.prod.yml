@@ -17,11 +17,19 @@ services:
     # Production environment variables
     environment:
       - NODE_ENV=production
-      - LOG_LEVEL=info  
+      - LOG_LEVEL=info
+      
+      # Method 1: Direct token authentication (recommended for production)
+      # Set these via Docker secrets or environment files:
+      # - CLIENT_ID=${CLIENT_ID}
+      # - CLIENT_SECRET=${CLIENT_SECRET}
+      # - REFRESH_TOKEN=${REFRESH_TOKEN}
+      
+      # Method 2: File-based OAuth credentials (legacy)
       - G_OAUTH_CREDENTIALS=/app/credentials.json
-      # Alternative configuration
       - GOOGLE_MEET_CREDENTIALS_PATH=/app/credentials.json
       - GOOGLE_MEET_TOKEN_PATH=/app/token.json
+      
       # Production optimizations
       - NODE_OPTIONS=--enable-source-maps --max-old-space-size=256
     

@@ -82,9 +82,13 @@ COPY --from=builder --chown=mcp:nodejs /app/build ./build/
 COPY --chown=mcp:nodejs *.md ./
 
 # Production environment variables for Google Meet MCP Server v3.0
-# Primary configuration (recommended)
+# Method 1: Direct token authentication (recommended for production)
+ENV CLIENT_ID=""
+ENV CLIENT_SECRET=""
+ENV REFRESH_TOKEN=""
+
+# Method 2: File-based OAuth credentials (legacy support)
 ENV G_OAUTH_CREDENTIALS=""
-# Alternative configuration  
 ENV GOOGLE_MEET_CREDENTIALS_PATH="/app/credentials.json"
 ENV GOOGLE_MEET_TOKEN_PATH="/app/token.json"
 

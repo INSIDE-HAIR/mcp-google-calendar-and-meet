@@ -2,7 +2,7 @@
 
 [![smithery badge](https://smithery.ai/badge/@inside-hair/google-meet-mcp-server)](https://smithery.ai/server/@inside-hair/google-meet-mcp-server)
 
-A **production-ready enterprise** Model Context Protocol (MCP) server for comprehensive Google Meet management through Google Calendar API v3 and Google Meet API v2. Features **Docker containerization**, **Smithery deployment**, **team security**, and enterprise-grade TypeScript architecture with 21 fully validated tools.
+A **production-ready enterprise** Model Context Protocol (MCP) server for comprehensive Google Meet management through Google Calendar API v3 and Google Meet API v2. Features **Docker containerization**, **Smithery deployment**, **direct token authentication**, **team security**, and enterprise-grade TypeScript architecture with 23 fully validated tools.
 
 ## 🎯 **Quick Start Options**
 
@@ -35,8 +35,10 @@ A **production-ready enterprise** Model Context Protocol (MCP) server for compre
 - ✅ **Security hardening** - Non-root user, read-only filesystem
 - ✅ **Volume management** - Persistent data and credential handling
 
-#### 🔨 **Smithery Integration**
-- ✅ **One-click deployment** - Web interface for easy configuration
+#### 🔨 **Smithery Integration + Direct Token Auth**
+- ✅ **Direct token authentication** - No file dependencies (CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN)
+- ✅ **One-click deployment** - Web interface for easy configuration  
+- ✅ **Backward compatibility** - Still supports file-based OAuth credentials
 - ✅ **Team-friendly setup** - Individual credentials, shared project structure
 - ✅ **Automatic health monitoring** - Real-time server status and metrics
 - ✅ **Cross-platform support** - Windows, macOS, Linux compatibility

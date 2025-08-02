@@ -1,6 +1,30 @@
 /**
- * Google Meet API client that interacts with the Google Calendar API
- * and Google Meet API to manage Google Meet meetings with recording capabilities.
+ * Google Meet API client for Google Meet MCP Server v3.0
+ * 
+ * Comprehensive API client that integrates Google Calendar API v3 and Google Meet API v2
+ * with advanced monitoring, authentication, and debugging capabilities.
+ * 
+ * Features:
+ * - Direct Token Authentication (CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN)
+ * - File-based Authentication (legacy G_OAUTH_CREDENTIALS support)
+ * - Real-time API monitoring and performance tracking
+ * - Comprehensive error handling with business logic validation
+ * - Integration with v3.0 monitoring system (health checks, metrics)
+ * - Debug mode support for troubleshooting Claude Desktop integration
+ * 
+ * Authentication Methods:
+ * 1. Direct Token (Recommended): Uses environment variables for tokens
+ * 2. File-based (Legacy): Uses credentials.json file
+ * 
+ * Monitoring Integration:
+ * - All API calls are automatically monitored when ENABLE_HEALTH_CHECK=true
+ * - Performance metrics are exposed via /metrics endpoint
+ * - API health status available via /api-status endpoint
+ * - Debug logging available when LOG_LEVEL=debug
+ * 
+ * Supports 23 validated tools across:
+ * - Calendar API v3: 6 tools (calendars, events, permissions)
+ * - Meet API v2: 17 tools (spaces, records, recordings, transcripts, participants)
  */
 
 import fs from "fs/promises";
@@ -307,9 +331,55 @@ class GoogleMeetAPI {
   }
 
   /**
+   * Initialize with direct tokens (Smithery-style authentication)
+   */
+  async initializeWithDirectTokens() {
+    const CLIENT_ID = process.env.CLIENT_ID;
+    const CLIENT_SECRET = process.env.CLIENT_SECRET;
+    const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
+
+    // Create OAuth2 client with direct credentials
+    const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET);
+    oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+
+    // Store OAuth2 client for shared use
+    this.auth = oAuth2Client;
+
+    // Initialize API clients
+    try {
+      this.calendar = google.calendar({ version: "v3", auth: oAuth2Client });
+      
+      // Initialize Meet REST client for direct API access
+      this.meetRestClient = new MeetRestClient(oAuth2Client);
+      this.meet = null;
+      
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error("✅ Google Meet API v2 access enabled via REST client");
+      }
+      
+      // Test the authentication by making a simple API call
+      await this.calendar.calendarList.list({ maxResults: 1 });
+      console.error("✅ Direct token authentication successful");
+      
+    } catch (error) {
+      throw new Error(`Direct token authentication failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Initialize the API client with OAuth2 credentials.
    */
   async initialize() {
+    // Method 1: Smithery-style direct token authentication (recommended for production)
+    if (process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REFRESH_TOKEN) {
+      console.error("🔑 Using direct token authentication (Smithery-style)");
+      await this.initializeWithDirectTokens();
+      return;
+    }
+    
+    // Method 2: File-based OAuth credentials (existing method)
+    console.error("📁 Using file-based OAuth credentials");
+    
     // Debug logging - only in development mode
     if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
       console.error(`=== GOOGLE API INITIALIZATION DEBUG ===`);

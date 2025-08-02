@@ -184,7 +184,24 @@ open ~/Library/Application\ Support/Claude/claude_desktop_config.json
 
 #### **Soluciones**:
 
-1. **Configuración Manual**:
+1. **Configuración Manual - Direct Token Authentication (Recomendado)**:
+   ```json
+   {
+     "mcpServers": {
+       "google-meet": {
+         "command": "npx",
+         "args": ["tsx", "ruta/al/proyecto/src/index.ts"],
+         "env": {
+           "CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+           "CLIENT_SECRET": "GOCSPX-your-client-secret",
+           "REFRESH_TOKEN": "1//your-refresh-token"
+         }
+       }
+     }
+   }
+   ```
+
+2. **Configuración Manual - File-based Authentication (Legacy)**:
    ```json
    {
      "mcpServers": {
@@ -199,7 +216,22 @@ open ~/Library/Application\ Support/Claude/claude_desktop_config.json
    }
    ```
 
-2. **Reiniciar Claude Desktop**:
+3. **Debugging con Monitoreo v3.0**:
+   ```bash
+   # Habilitar modo debug con monitoreo
+   export LOG_LEVEL=debug
+   export ENABLE_HEALTH_CHECK=true
+   export HEALTH_CHECK_PORT=9090
+   
+   # Iniciar con debugging
+   npx tsx src/index.ts
+   
+   # En otra terminal, verificar health check
+   curl http://localhost:9090/health
+   curl http://localhost:9090/metrics
+   ```
+
+4. **Reiniciar Claude Desktop**:
    ```bash
    # Cerrar completamente Claude Desktop
    # Esperar 10 segundos
@@ -210,9 +242,10 @@ open ~/Library/Application\ Support/Claude/claude_desktop_config.json
 
 #### **Síntomas**:
 ```
-❌ Solo algunas herramientas disponibles (menos de 17)
+❌ Solo algunas herramientas disponibles (menos de 23)
 ❌ "Permission denied" para ciertas operaciones
 ❌ "Quota exceeded" errors
+❌ Monitoreo no muestra estadísticas correctas
 ```
 
 #### **Soluciones**:
@@ -521,15 +554,85 @@ customLogLevel: "debug"
 gcloud logging read "resource.type=project AND protoPayload.authenticationInfo.principalEmail=tu-email@domain.com" --limit=50 --format="table(timestamp,protoPayload.methodName,protoPayload.status.code)"
 ```
 
-#### **3. Debugging Manual**:
+#### **3. Debugging Manual con v3.0 Monitoring**:
 ```bash
-# Test manual del servidor MCP
+# Test manual del servidor MCP con monitoreo habilitado
 cd /path/to/google-meet-mcp-server
-G_OAUTH_CREDENTIALS="/path/to/credentials.json" npx tsx src/index.ts
+
+# Método 1: Direct Token Authentication (Recomendado)
+export CLIENT_ID="your-client-id.apps.googleusercontent.com"
+export CLIENT_SECRET="GOCSPX-your-client-secret"
+export REFRESH_TOKEN="1//your-refresh-token"
+export LOG_LEVEL=debug
+export ENABLE_HEALTH_CHECK=true
+export HEALTH_CHECK_PORT=9090
+
+npx tsx src/index.ts
+
+# Método 2: File-based Authentication (Legacy)
+G_OAUTH_CREDENTIALS="/path/to/credentials.json" LOG_LEVEL=debug ENABLE_HEALTH_CHECK=true npx tsx src/index.ts
 
 # Debería iniciar sin errores y mostrar:
 # "Google Meet MCP Server v3.0 starting..."
+# "✅ Direct token authentication successful" (o file-based)
+# "✅ 23 tools registered successfully"
+# "🔍 Health check endpoint available at http://localhost:9090/health"
+# "📊 Metrics endpoint available at http://localhost:9090/metrics"
 # "Server initialized successfully"
+```
+
+#### **4. Endpoints de Monitoreo v3.0**:
+```bash
+# Health Check - Verifica estado general del servidor
+curl http://localhost:9090/health
+# Respuesta esperada: {"status":"healthy","timestamp":"...","oauth":"connected","apis":"available"}
+
+# Metrics - Estadísticas de uso en formato Prometheus
+curl http://localhost:9090/metrics
+# Muestra métricas como: tool_calls_total, api_calls_total, response_time_seconds
+
+# API Monitor - Estado en tiempo real de las APIs
+curl http://localhost:9090/api-status
+# Muestra conectividad con Calendar API v3 y Meet API v2
+
+# System Info - Información del sistema
+curl http://localhost:9090/system
+# Muestra memoria, CPU, uptime del servidor
+
+# Detailed Health - Check completo con diagnósticos
+curl http://localhost:9090/health/detailed
+# Incluye validación de tokens, conectividad APIs, recursos sistema
+
+# Version Info - Información de versión y características
+curl http://localhost:9090/version
+# Muestra versión del servidor, herramientas disponibles, características
+
+# Ready Check - Estado de preparación para requests
+curl http://localhost:9090/ready
+# Verifica si el servidor está listo para procesar requests MCP
+```
+
+#### **5. Modos de Debugging**:
+```bash
+# Modo DEBUG - Logging detallado de todas las operaciones
+export LOG_LEVEL=debug
+
+# Modo INFO - Logging normal de operaciones importantes (default)
+export LOG_LEVEL=info
+
+# Modo WARN - Solo warnings y errores
+export LOG_LEVEL=warn
+
+# Modo ERROR - Solo errores críticos
+export LOG_LEVEL=error
+
+# Habilitar Health Check Endpoint
+export ENABLE_HEALTH_CHECK=true
+export HEALTH_CHECK_PORT=9090  # Puerto personalizable
+
+# Debugging de APIs específicas
+export DEBUG_CALENDAR_API=true  # Debug solo Calendar API
+export DEBUG_MEET_API=true      # Debug solo Meet API
 ```
 
 ---
