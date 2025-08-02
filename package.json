@@ -15,7 +15,8 @@
   "scripts": {
     "build": "node scripts/build.js",
     "build:watch": "tsc --watch",
-    "start": "node dist/index.js",
+    "start": "tsx src/index.ts",
+    "start:compiled": "node dist/index.js",
     "start:dev": "tsx src/index.ts",
     "start:watch": "tsx --watch src/index.ts",
     "setup": "node dist/setup.js",
@@ -51,13 +52,13 @@
     "dotenv": "^17.2.1",
     "googleapis": "^144.0.0",
     "open": "^9.1.0",
+    "tsx": "^4.20.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^24.1.0",
     "@vitest/coverage-v8": "^3.2.4",
     "esbuild": "^0.25.8",
-    "tsx": "^4.20.3",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }
