@@ -17,7 +17,7 @@ describe("Google Meet MCP Server - Basic Tests", () => {
 
         expect(packageJson.name).toBe("google-meet-mcp");
         expect(packageJson.type).toBe("module");
-        expect(packageJson.main).toBe("build/src/index.js");
+        expect(packageJson.main).toBe("dist/index.js");
         expect(
           packageJson.dependencies["@modelcontextprotocol/sdk"]
         ).toBeDefined();
@@ -70,7 +70,7 @@ describe("Google Meet MCP Server - Basic Tests", () => {
 
     it("should create GoogleMeetAPI instances", async () => {
       const { default: GoogleMeetAPI } = await import(
-        "../src/GoogleMeetAPI.ts"
+        "../src/GoogleMeetAPI.js"
       );
 
       const api = new GoogleMeetAPI("test-credentials.json", "test-token.json");
@@ -84,7 +84,7 @@ describe("Google Meet MCP Server - Basic Tests", () => {
 
     it("should have all expected methods", async () => {
       const { default: GoogleMeetAPI } = await import(
-        "../src/GoogleMeetAPI.ts"
+        "../src/GoogleMeetAPI.js"
       );
 
       const api = new GoogleMeetAPI("test.json", "token.json");
@@ -112,7 +112,7 @@ describe("Google Meet MCP Server - Basic Tests", () => {
   describe("Error Handling", () => {
     it("should handle missing credentials gracefully", async () => {
       const { default: GoogleMeetAPI } = await import(
-        "../src/GoogleMeetAPI.ts"
+        "../src/GoogleMeetAPI.js"
       );
 
       const api = new GoogleMeetAPI("nonexistent.json", "nonexistent.json");
@@ -122,7 +122,7 @@ describe("Google Meet MCP Server - Basic Tests", () => {
 
     it("should validate constructor parameters", async () => {
       const { default: GoogleMeetAPI } = await import(
-        "../src/GoogleMeetAPI.ts"
+        "../src/GoogleMeetAPI.js"
       );
 
       // Should accept different parameter types without throwing
@@ -137,7 +137,7 @@ describe("Google Meet MCP Server - Basic Tests", () => {
 
     it("should handle method calls without initialization", async () => {
       const { default: GoogleMeetAPI } = await import(
-        "../src/GoogleMeetAPI.ts"
+        "../src/GoogleMeetAPI.js"
       );
 
       const api = new GoogleMeetAPI("test.json", "token.json");

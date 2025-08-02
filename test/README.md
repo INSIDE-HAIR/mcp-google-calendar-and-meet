@@ -1,6 +1,6 @@
 # Testing Suite for Google Meet MCP Server
 
-This directory contains a comprehensive testing suite for the Google Meet MCP Server v2.0.
+This directory contains a comprehensive testing suite for the Google Meet MCP Server v3.0.
 
 ## Test Structure
 

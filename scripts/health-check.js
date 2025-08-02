@@ -4,7 +4,7 @@
  * Validates server health, API connectivity, and authentication status
  */
 
-import { GoogleMeetAPI } from '../src/GoogleMeetAPI.ts';
+import GoogleMeetAPI from '../src/GoogleMeetAPI.js';
 import fs from 'fs/promises';
 import path from 'path';
 
