@@ -74,11 +74,17 @@ class GoogleMeetMcpServer {
       }
     );
 
-    // Setup Google Meet API client - support both configuration methods
+    // Setup Google Meet API client - support multiple authentication methods
     let credentialsPath, tokenPath;
 
-    if (process.env.G_OAUTH_CREDENTIALS) {
+    if (process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REFRESH_TOKEN) {
+      // Direct token authentication (recommended for production)
+      debugLog("🔑 Using direct token authentication");
+      credentialsPath = "";
+      tokenPath = "";
+    } else if (process.env.G_OAUTH_CREDENTIALS) {
       // Simplified configuration (single variable)
+      debugLog("📁 Using file-based OAuth credentials");
       credentialsPath = process.env.G_OAUTH_CREDENTIALS;
       tokenPath = credentialsPath.replace(/\.json$/, ".token.json");
     } else if (
@@ -86,15 +92,18 @@ class GoogleMeetMcpServer {
       process.env.GOOGLE_MEET_TOKEN_PATH
     ) {
       // Local development configuration (two variables)
+      debugLog("🔧 Using local development configuration");
       credentialsPath = process.env.GOOGLE_MEET_CREDENTIALS_PATH;
       tokenPath = process.env.GOOGLE_MEET_TOKEN_PATH;
     } else {
-      debugLog("Error: Missing required environment variables.");
-      debugLog("Please set either:");
-      debugLog("  - G_OAUTH_CREDENTIALS (path to OAuth credentials file)");
-      debugLog(
-        "  - OR both GOOGLE_MEET_CREDENTIALS_PATH and GOOGLE_MEET_TOKEN_PATH"
-      );
+      debugLog("❌ Error: Missing required environment variables.");
+      debugLog("Please set one of the following authentication methods:");
+      debugLog("  1. Direct token authentication (recommended):");
+      debugLog("     - CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN");
+      debugLog("  2. File-based authentication:");
+      debugLog("     - G_OAUTH_CREDENTIALS (path to OAuth credentials file)");
+      debugLog("  3. Local development:");
+      debugLog("     - GOOGLE_MEET_CREDENTIALS_PATH and GOOGLE_MEET_TOKEN_PATH");
       process.exit(1);
     }
 
