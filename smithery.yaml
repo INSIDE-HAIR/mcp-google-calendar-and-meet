@@ -1,33 +1,30 @@
-# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
-# Google Meet MCP Server v3.0 - Production-ready containerized MCP server with enterprise features
+runtime: typescript
 
-startCommand:
-  type: stdio
-  configSchema:
-    type: object
-    anyOf:
-      - required: [CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN]
-      - required: [googleOAuthCredentials]
-      - required: [googleMeetCredentialsPath, googleMeetTokenPath]
-    properties:
-      CLIENT_ID:
-        type: string
-        title: "Google OAuth2 Client ID (Recommended)"
-        description: "Google OAuth2 Client ID for direct token authentication. More reliable than file-based auth."
-        pattern: "^[0-9]+-[a-zA-Z0-9]+\\.apps\\.googleusercontent\\.com$"
-        examples: [
-          "123456789-abcdefghijklmnop.apps.googleusercontent.com"
-        ]
-      CLIENT_SECRET:
-        type: string
-        title: "Google OAuth2 Client Secret"
-        description: "Google OAuth2 Client Secret that corresponds to your Client ID."
-        pattern: "^GOCSPX-[a-zA-Z0-9_-]+$"
-        examples: [
-          "GOCSPX-abcdefghijklmnopqrstuvwxyz"
-        ]
-      REFRESH_TOKEN:
-        type: string
+configSchema:
+  type: object
+  anyOf:
+    - required: [CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN]
+    - required: [googleOAuthCredentials]
+    - required: [googleMeetCredentialsPath, googleMeetTokenPath]
+  properties:
+    CLIENT_ID:
+      type: string
+      title: "Google OAuth2 Client ID (Recommended)"
+      description: "Google OAuth2 Client ID for direct token authentication. More reliable than file-based auth."
+      pattern: "^[0-9]+-[a-zA-Z0-9]+\\.apps\\.googleusercontent\\.com$"
+      examples: [
+        "123456789-abcdefghijklmnop.apps.googleusercontent.com"
+      ]
+    CLIENT_SECRET:
+      type: string
+      title: "Google OAuth2 Client Secret"
+      description: "Google OAuth2 Client Secret that corresponds to your Client ID."
+      pattern: "^GOCSPX-[a-zA-Z0-9_-]+$"
+      examples: [
+        "GOCSPX-abcdefghijklmnopqrstuvwxyz"
+      ]
+    REFRESH_TOKEN:
+      type: string
         title: "Google OAuth2 Refresh Token"
         description: "Long-lived refresh token for automatic authentication. Obtain this through OAuth flow."
         pattern: "^1//[a-zA-Z0-9_-]+$"
