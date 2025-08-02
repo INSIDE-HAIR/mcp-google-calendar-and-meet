@@ -6,7 +6,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import dotenv from "dotenv";
-import GoogleMeetAPI from "./GoogleMeetAPI.js";
+// Dynamic import for GoogleMeetAPI to avoid static dependency issues
 
 // Load environment variables silently
 try {
@@ -37,7 +37,7 @@ export default function createStatelessServer({
   });
 
   // Initialize Google Meet API
-  let googleMeetAPI: GoogleMeetAPI | null = null;
+  let googleMeetAPI: any = null;
   
   const initializeAPI = async () => {
     if (!googleMeetAPI) {
@@ -49,6 +49,8 @@ export default function createStatelessServer({
       if (config.googleMeetCredentialsPath) process.env.GOOGLE_MEET_CREDENTIALS_PATH = config.googleMeetCredentialsPath;
       if (config.googleMeetTokenPath) process.env.GOOGLE_MEET_TOKEN_PATH = config.googleMeetTokenPath;
       
+      // Dynamic import to avoid static dependency issues
+      const { default: GoogleMeetAPI } = await import("./GoogleMeetAPI.js");
       googleMeetAPI = new GoogleMeetAPI();
     }
     return googleMeetAPI;
