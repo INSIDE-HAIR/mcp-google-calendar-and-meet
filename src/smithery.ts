@@ -41,6 +41,9 @@ export default function createStatelessServer({
   
   const initializeAPI = async () => {
     if (!googleMeetAPI) {
+      // Debug logging
+      console.error("🔧 Initializing Google Meet API...");
+      
       // Set environment variables from config
       if (config.CLIENT_ID) process.env.CLIENT_ID = config.CLIENT_ID;
       if (config.CLIENT_SECRET) process.env.CLIENT_SECRET = config.CLIENT_SECRET;
@@ -49,9 +52,23 @@ export default function createStatelessServer({
       if (config.googleMeetCredentialsPath) process.env.GOOGLE_MEET_CREDENTIALS_PATH = config.googleMeetCredentialsPath;
       if (config.googleMeetTokenPath) process.env.GOOGLE_MEET_TOKEN_PATH = config.googleMeetTokenPath;
       
+      // Debug: Check which auth method will be used
+      if (process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.REFRESH_TOKEN) {
+        console.error("🔑 Will use direct token authentication");
+      } else if (process.env.G_OAUTH_CREDENTIALS) {
+        console.error("📁 Will use file-based OAuth credentials");
+      } else {
+        console.error("⚠️ No authentication method detected");
+      }
+      
       // Dynamic import to avoid static dependency issues
       const { default: GoogleMeetAPI } = await import("./GoogleMeetAPI.js");
       googleMeetAPI = new GoogleMeetAPI();
+      
+      // Initialize the API with credentials
+      console.error("⚡ Calling initialize()...");
+      await googleMeetAPI.initialize();
+      console.error("✅ API initialized successfully");
     }
     return googleMeetAPI;
   };
@@ -79,11 +96,21 @@ export default function createStatelessServer({
     "[Calendar API v3] List all calendars available to the user",
     {},
     async () => {
-      const api = await initializeAPI();
-      const result = await api.listCalendars();
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      try {
+        const api = await initializeAPI();
+        const result = await api.listCalendars();
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Check that CLIENT_ID, CLIENT_SECRET, and REFRESH_TOKEN are set\n- Verify that the refresh token is still valid\n- Ensure Google Calendar API is enabled in your Google Cloud project` 
+          }],
+          isError: true,
+        };
+      }
     }
   );
 
