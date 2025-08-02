@@ -124,11 +124,21 @@ export default function createStatelessServer({
       calendar_id: { type: "string", description: "Calendar ID to list events from (default: 'primary')" },
     },
     async (args) => {
-      const api = await initializeAPI();
-      const result = await api.listEvents(args);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      try {
+        const api = await initializeAPI();
+        const result = await api.listCalendarEvents(args.max_results, args.time_min, args.time_max, args.calendar_id);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Check that CLIENT_ID, CLIENT_SECRET, and REFRESH_TOKEN are set\n- Verify that the refresh token is still valid\n- Ensure Google Calendar API is enabled in your Google Cloud project` 
+          }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -139,11 +149,21 @@ export default function createStatelessServer({
       event_id: { type: "string", description: "ID of the calendar event to retrieve" },
     },
     async (args) => {
-      const api = await initializeAPI();
-      const result = await api.getEvent(args.event_id as string);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      try {
+        const api = await initializeAPI();
+        const result = await api.getCalendarEvent(args.event_id as string);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Check that the event ID is correct\n- Verify that you have access to this calendar event` 
+          }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -165,11 +185,21 @@ export default function createStatelessServer({
       calendar_id: { type: "string", description: "Calendar ID to create event in (default: 'primary')" },
     },
     async (args) => {
-      const api = await initializeAPI();
-      const result = await api.createEvent(args);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      try {
+        const api = await initializeAPI();
+        const result = await api.createCalendarEvent(args);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Check that summary, start_time, and end_time are provided\n- Verify time format (ISO 8601: YYYY-MM-DDTHH:mm:ss.sssZ)\n- Ensure you have write permissions to the calendar` 
+          }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -190,11 +220,22 @@ export default function createStatelessServer({
       guest_can_see_other_guests: { type: "boolean", description: "Updated guest visibility permission (optional)" },
     },
     async (args) => {
-      const api = await initializeAPI();
-      const result = await api.updateEvent(args);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      try {
+        const api = await initializeAPI();
+        const { event_id, ...updateData } = args;
+        const result = await api.updateCalendarEvent(event_id as string, updateData);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Check that the event ID is correct\n- Verify that you have write permissions to this calendar event` 
+          }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -205,11 +246,21 @@ export default function createStatelessServer({
       event_id: { type: "string", description: "ID of the event to delete" },
     },
     async (args) => {
-      const api = await initializeAPI();
-      const result = await api.deleteEvent(args.event_id as string);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      try {
+        const api = await initializeAPI();
+        const result = await api.deleteCalendarEvent(args.event_id as string);
+        return {
+          content: [{ type: "text", text: JSON.stringify({ success: result, message: "Event deleted successfully" }, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Check that the event ID is correct\n- Verify that you have delete permissions to this calendar event` 
+          }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -229,11 +280,21 @@ export default function createStatelessServer({
       default_join_as_viewer: { type: "boolean", description: "Join participants as viewers by default (default: false)" },
     },
     async (args) => {
-      const api = await initializeAPI();
-      const result = await api.createSpace(args);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      try {
+        const api = await initializeAPI();
+        const result = await api.createSpace(args);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Ensure Google Meet API v2 is enabled in your Google Cloud project\n- Verify that you have the required Google Workspace subscription for advanced features` 
+          }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -244,11 +305,21 @@ export default function createStatelessServer({
       space_name: { type: "string", description: "Name of the space (spaces/{space_id})" },
     },
     async (args) => {
-      const api = await initializeAPI();
-      const result = await api.getSpace(args.space_name as string);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      try {
+        const api = await initializeAPI();
+        const result = await api.getSpace(args.space_name as string);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Check that the space name is correct (format: spaces/{space_id})\n- Verify that the space exists and you have access to it` 
+          }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -260,11 +331,21 @@ export default function createStatelessServer({
       page_size: { type: "number", description: "Maximum number of results to return (default: 10, max: 50)" },
     },
     async (args) => {
-      const api = await initializeAPI();
-      const result = await api.listConferenceRecords(args);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      try {
+        const api = await initializeAPI();
+        const result = await api.listConferenceRecords(args.filter, args.page_size);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Check that the filter syntax is correct\n- Verify that you have access to conference records` 
+          }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -275,11 +356,21 @@ export default function createStatelessServer({
       conference_record_name: { type: "string", description: "Name of the conference record (conferenceRecords/{record_id})" },
     },
     async (args) => {
-      const api = await initializeAPI();
-      const result = await api.getConferenceRecord(args.conference_record_name as string);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      try {
+        const api = await initializeAPI();
+        const result = await api.getConferenceRecord(args.conference_record_name as string);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ 
+            type: "text", 
+            text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Check that the conference record name is correct (format: conferenceRecords/{record_id})\n- Verify that the conference record exists and you have access to it` 
+          }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -296,8 +387,8 @@ export default function createStatelessServer({
     { name: "meet_v2_list_participants", description: "[Meet API v2 GA] List participants for a conference record", method: "listParticipants" },
     { name: "meet_v2_get_participant_session", description: "[Meet API v2 GA] Get details of a specific participant session", method: "getParticipantSession" },
     { name: "meet_v2_list_participant_sessions", description: "[Meet API v2 GA] List sessions for a specific participant", method: "listParticipantSessions" },
-    { name: "calendar_v3_freebusy_query", description: "[Calendar API v3] Query free/busy information for calendars", method: "freebusyQuery" },
-    { name: "calendar_v3_quick_add", description: "[Calendar API v3] Create event using natural language", method: "quickAdd" },
+    { name: "calendar_v3_freebusy_query", description: "[Calendar API v3] Query free/busy information for calendars", method: "queryFreeBusy" },
+    { name: "calendar_v3_quick_add", description: "[Calendar API v3] Create event using natural language", method: "quickAddEvent" },
   ];
 
   // Register all remaining tools dynamically
@@ -309,13 +400,34 @@ export default function createStatelessServer({
       async (args) => {
         try {
           const api = await initializeAPI();
-          const result = await (api as any)[method](args);
+          
+          // Handle different argument patterns for different methods
+          let result;
+          if (method === "queryFreeBusy") {
+            // queryFreeBusy expects (calendarIds, timeMin, timeMax)
+            result = await api[method](args.calendar_ids || [], args.time_min, args.time_max);
+          } else if (method === "quickAddEvent") {
+            // quickAddEvent expects (calendarId, text)
+            result = await api[method](args.calendar_id || "primary", args.text);
+          } else if (typeof args === 'object' && Object.keys(args).length === 1) {
+            // Methods that expect a single argument (like space_name, conference_record_name, etc.)
+            const argValue = Object.values(args)[0];
+            result = await api[method](argValue);
+          } else {
+            // Methods that expect the full args object
+            result = await api[method](args);
+          }
+          
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
         } catch (error) {
           return {
-            content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+            content: [{ 
+              type: "text", 
+              text: `Error: ${error instanceof Error ? error.message : String(error)}\n\nTroubleshooting:\n- Check that all required parameters are provided\n- Verify that you have the necessary permissions for this operation\n- Ensure the resource exists and is accessible` 
+            }],
+            isError: true,
           };
         }
       }
