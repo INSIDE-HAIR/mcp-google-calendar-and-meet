@@ -513,8 +513,8 @@ export class ConfigManager {
   },
   "google": {
     "meet": {
-      "enableBetaFeatures": true,
-      "maxRetries": 5
+      "maxRetries": 5,
+      "timeoutMs": 30000
     }
   }
 }

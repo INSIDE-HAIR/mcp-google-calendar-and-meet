@@ -17,7 +17,7 @@ import readline from "readline";
 // Load environment variables from .env.local (if it exists)
 dotenv.config({ path: ".env.local" });
 
-// Scopes required for Google Meet functionality via Calendar API and Meet API v2beta
+// Scopes required for Google Meet functionality via Calendar API and Meet API v2
 const SCOPES = [
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/meetings.space.created",

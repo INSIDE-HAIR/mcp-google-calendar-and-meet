@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Google Meet MCP Server v3.0 - An advanced Model Context Protocol (MCP) server that interacts with Google Meet through Google Calendar API v3 and Google Meet API v2. This server provides comprehensive tools for creating and managing Google Meet meetings with advanced enterprise features including production monitoring, 21 validated tools, and TypeScript compilation.
+Google Meet MCP Server v3.0 - An advanced Model Context Protocol (MCP) server that interacts with Google Meet through Google Calendar API v3 and Google Meet API v2. This server provides comprehensive tools for creating and managing Google Meet meetings with advanced enterprise features including production monitoring, 23 validated tools, and TypeScript compilation.
 
 ## Common Development Commands
 
@@ -27,9 +27,9 @@ The project uses ES modules (`"type": "module"` in package.json) and follows thi
    - Entry point for the application
    - Implements the MCP server using `@modelcontextprotocol/sdk`
    - Handles tool registration and request routing
-   - Manages 21 tools across two APIs:
-     - 6 Calendar API v3 tools: calendar*v3*\*
-     - 15 Meet API v2 (GA) tools: meet*v2*\*
+   - Manages 23 tools across two APIs:
+     - 11 Calendar API v3 tools: calendar*v3*\*
+     - 12 Meet API v2 (GA) tools: meet*v2*\*
    - Includes v3.0 production monitoring system with health checks and metrics
 
 2. **src/GoogleMeetAPI.ts** - Google Calendar and Meet API wrapper
@@ -53,7 +53,7 @@ The project uses ES modules (`"type": "module"` in package.json) and follows thi
    - **monitoring.ts** - HTTP server with 7 monitoring endpoints (/health, /metrics, etc.)
 
 6. **src/validation/** - Zod validation system
-   - **meetSchemas.ts** - Complete validation for all 21 tools with business logic
+   - **meetSchemas.ts** - Complete validation for all 23 tools with business logic
 
 ### Authentication Flow
 

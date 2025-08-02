@@ -115,7 +115,7 @@ const CreateSpaceSchema = z.object({
 interface MeetServerConfig {
   transport: { type: "stdio" | "http"; port?: number };
   auth: { credentialsPath: string; tokenPath?: string };
-  meet: { enableBetaFeatures: boolean }; // Único nuestro
+  meet: { maxRetries: number; timeoutMs: number };
   debug: boolean;
 }
 ```
@@ -571,9 +571,8 @@ const MeetServerConfigSchema = z.object({
     tokenPath: z.string().optional(),
   }),
   meet: z.object({
-    enableBetaFeatures: z.boolean().default(false),
     maxRetries: z.number().min(1).max(10).default(3),
-    timeoutMs: z.number().min(1000).max(30000).default(10000),
+    timeoutMs: z.number().min(1000).max(30000).default(30000),
   }),
   debug: z.boolean().default(false),
   logLevel: z.enum(["error", "warn", "info", "debug"]).default("info"),
@@ -591,13 +590,8 @@ export function loadMeetServerConfig() {
         : process.env.GOOGLE_MEET_TOKEN_PATH,
     },
     meet: {
-      enableBetaFeatures: process.env.MEET_ENABLE_BETA === "true",
-      maxRetries: process.env.MEET_MAX_RETRIES
-        ? parseInt(process.env.MEET_MAX_RETRIES)
-        : 3,
-      timeoutMs: process.env.MEET_TIMEOUT_MS
-        ? parseInt(process.env.MEET_TIMEOUT_MS)
-        : 10000,
+      maxRetries: parseInt(process.env.MEET_MAX_RETRIES || "3"),
+      timeoutMs: parseInt(process.env.MEET_TIMEOUT_MS || "30000"),
     },
     debug: process.env.DEBUG === "true",
     logLevel: process.env.LOG_LEVEL || "info",

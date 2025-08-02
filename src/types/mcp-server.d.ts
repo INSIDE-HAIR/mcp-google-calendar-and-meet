@@ -34,7 +34,6 @@ export interface AuthConfig {
 }
 
 export interface MeetConfig {
-  enableBetaFeatures: boolean;
   maxRetries: number;
   timeoutMs: number;
 }

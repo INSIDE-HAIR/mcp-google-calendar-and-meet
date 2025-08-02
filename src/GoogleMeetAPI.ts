@@ -38,7 +38,7 @@ import type {
 } from './types/index.js';
 
 /**
- * REST client for Google Meet API v2/v2beta
+ * REST client for Google Meet API v2
  * Provides direct access to Meet API endpoints not available in googleapis library
  */
 class MeetRestClient {
@@ -394,10 +394,10 @@ class GoogleMeetAPI {
     // Initialize Meet REST client for direct API access
     this.meetRestClient = new MeetRestClient(oAuth2Client);
 
-    // Note: Now using direct REST API calls for Google Meet API v2/v2beta
+    // Note: Now using direct REST API calls for Google Meet API v2
     this.meet = null;
     if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
-      console.error("✅ Google Meet API v2/v2beta access enabled via REST client");
+      console.error("✅ Google Meet API v2 access enabled via REST client");
     }
   }
 
@@ -1550,125 +1550,6 @@ class GoogleMeetAPI {
     }
   }
 
-  // ========== GOOGLE MEET API v2beta - SPACE MEMBERS MANAGEMENT ==========
-
-  /**
-   * Create a member (co-host) in a meeting space
-   * @param {string} spaceName - Name of the space (e.g., "spaces/abc-defg-hij")
-   * @param {string} email - Email of the user to add as member
-   * @param {string} role - Role to assign ("CO_HOST" or "ROLE_UNSPECIFIED")
-   * @returns {Promise<Object>} - Created member details
-   */
-  async createSpaceMember(spaceName: string, email: string, role: string = "CO_HOST"): Promise<any> {
-    try {
-      // Direct REST API call to Google Meet API v2beta
-      const url = `https://meet.googleapis.com/v2beta/${spaceName}/members`;
-      const body = {
-        email: email,
-        role: role
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${(await this.auth.getAccessToken()).token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      throw new Error(`Error creating space member: ${error.message}`);
-    }
-  }
-
-  /**
-   * List members of a meeting space
-   * @param {string} spaceName - Name of the space (e.g., "spaces/abc-defg-hij")
-   * @param {number} pageSize - Maximum number of members to return
-   * @returns {Promise<Object>} - List of space members
-   */
-  async listSpaceMembers(spaceName: string, pageSize: number = 10): Promise<any> {
-    try {
-      // Direct REST API call to Google Meet API v2beta
-      const url = `https://meet.googleapis.com/v2beta/${spaceName}/members?pageSize=${pageSize}`;
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${(await this.auth.getAccessToken()).token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      throw new Error(`Error listing space members: ${error.message}`);
-    }
-  }
-
-  /**
-   * Get details of a specific space member
-   * @param {string} memberName - Name of the member (e.g., "spaces/abc-defg-hij/members/member-id")
-   * @returns {Promise<Object>} - Member details
-   */
-  async getSpaceMember(memberName: string): Promise<any> {
-    try {
-      // Direct REST API call to Google Meet API v2beta
-      const url = `https://meet.googleapis.com/v2beta/${memberName}`;
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${(await this.auth.getAccessToken()).token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      throw new Error(`Error getting space member: ${error.message}`);
-    }
-  }
-
-  /**
-   * Delete a member from a meeting space
-   * @param {string} memberName - Name of the member (e.g., "spaces/abc-defg-hij/members/member-id")
-   * @returns {Promise<Object>} - Deletion confirmation
-   */
-  async deleteSpaceMember(memberName: string): Promise<any> {
-    try {
-      // Direct REST API call to Google Meet API v2beta
-      const url = `https://meet.googleapis.com/v2beta/${memberName}`;
-
-      const response = await fetch(url, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${(await this.auth.getAccessToken()).token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-
-      // DELETE might return empty response
-      return { success: true, message: "Member deleted successfully" };
-    } catch (error) {
-      throw new Error(`Error deleting space member: ${error.message}`);
-    }
-  }
 }
 
 export default GoogleMeetAPI;

@@ -11,7 +11,7 @@ import http from "http";
 import { URL } from "url";
 
 /**
- * REST client for Google Meet API v2/v2beta
+ * REST client for Google Meet API v2
  * Provides direct access to Meet API endpoints not available in googleapis library
  */
 class MeetRestClient {
@@ -319,9 +319,9 @@ class GoogleMeetAPI {
     // Initialize Meet REST client for direct API access
     this.meetRestClient = new MeetRestClient(oAuth2Client);
 
-    // Note: Now using direct REST API calls for Google Meet API v2/v2beta
+    // Note: Now using direct REST API calls for Google Meet API v2
     this.meet = null;
-    console.log("✅ Google Meet API v2/v2beta access enabled via REST client");
+    console.log("✅ Google Meet API v2 access enabled via REST client");
   }
 
   // ========== GOOGLE CALENDAR API v3 METHODS ==========

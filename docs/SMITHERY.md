@@ -479,7 +479,7 @@ exampleConfig:
 
 ```yaml
 features:
-  - "17 production-ready tools (v2beta removed for stability)"
+  - "23 production-ready tools (Calendar API v3 + Meet API v2)"
   - "Enterprise-grade security and authentication"
   - "Docker containerization support"
 ```

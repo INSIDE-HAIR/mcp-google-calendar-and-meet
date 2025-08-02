@@ -1163,7 +1163,7 @@ class GoogleMeetMcpServer {
         };
       }
       // NOTE: get_transcript_entry handler removed - not supported by API
-      // NOTE: All v2beta handlers removed - beta features are disabled
+      // NOTE: All endpoints implemented
       else {
         throw new McpError(
           ErrorCode.MethodNotFound,
