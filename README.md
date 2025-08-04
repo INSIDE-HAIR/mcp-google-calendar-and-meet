@@ -1,6 +1,6 @@
 # 🚀 Google Meet MCP Server v3.0 - Production Ready
 
-[![smithery badge](https://smithery.ai/badge/@inside-hair/google-meet-mcp-server)](https://smithery.ai/server/@inside-hair/google-meet-mcp-server)
+[![smithery badge](https://smithery.ai/badge/@inside-hair/google-calendar-and-meet)](https://smithery.ai/server/@inside-hair/google-calendar-and-meet)
 
 A **production-ready enterprise** Model Context Protocol (MCP) server for comprehensive Google Meet management through Google Calendar API v3 and Google Meet API v2. Features **Docker containerization**, **Smithery deployment**, **direct token authentication**, **team security**, and enterprise-grade TypeScript architecture with 23 fully validated tools.
 
