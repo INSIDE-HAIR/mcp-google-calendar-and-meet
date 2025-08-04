@@ -91,7 +91,7 @@ A **production-ready enterprise** Model Context Protocol (MCP) server for compre
 
 ### **🔨 Smithery (Recommended for Teams)**
 
-1. **Visit [Smithery.ai](https://smithery.ai/server/@inside-hair/google-meet-mcp-server)**
+1. **Visit [Smithery.ai](https://smithery.ai/server/@INSIDE-HAIR/mcp-google-meet-and-calendar)**
 2. **Click "Deploy Server"**
 3. **Configure your Google credentials path**
 4. **Start using in Claude Desktop**
@@ -553,7 +553,7 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
 
 ### **🎯 Quick Links**
 - **Repository**: [github.com/INSIDE-HAIR/google-meet-mcp-server](https://github.com/INSIDE-HAIR/google-meet-mcp-server)
-- **Smithery Page**: [smithery.ai/server/@inside-hair/google-meet-mcp-server](https://smithery.ai/server/@inside-hair/google-meet-mcp-server)
+- **Smithery Page**: [smithery.ai/server/@inside-hair/google-meet-mcp-server](https://smithery.ai/server/@INSIDE-HAIR/mcp-google-meet-and-calendar)
 - **Docker Hub**: [ghcr.io/inside-hair/google-meet-mcp-server](https://ghcr.io/inside-hair/google-meet-mcp-server)
 
 ## Acknowledgments
