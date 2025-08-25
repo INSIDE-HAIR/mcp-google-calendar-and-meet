@@ -376,8 +376,35 @@ class GoogleMeetMcpServer {
                 type: "string",
                 description: "ID of the event to delete",
               },
+              calendar_id: {
+                type: "string",
+                description: "ID of the calendar containing the event (defaults to 'primary')",
+                default: "primary",
+              },
             },
             required: ["event_id"],
+          },
+        },
+        {
+          name: "calendar_v3_move_event",
+          description: "[Calendar API v3] Move a calendar event from one calendar to another",
+          inputSchema: {
+            type: "object",
+            properties: {
+              event_id: {
+                type: "string",
+                description: "ID of the event to move",
+              },
+              source_calendar_id: {
+                type: "string",
+                description: "ID of the calendar where the event currently exists",
+              },
+              destination_calendar_id: {
+                type: "string",
+                description: "ID of the calendar to move the event to",
+              },
+            },
+            required: ["event_id", "source_calendar_id", "destination_calendar_id"],
           },
         },
 
@@ -819,7 +846,7 @@ class GoogleMeetMcpServer {
         // Validate arguments with Zod schema
         const validatedArgs = validateToolArgs(toolName, args);
 
-        const event = await this.googleMeet.getCalendarEvent(validatedArgs.event_id);
+        const event = await this.googleMeet.getCalendarEvent(validatedArgs.event_id, validatedArgs.calendar_id);
 
         return {
           content: [
@@ -898,7 +925,8 @@ class GoogleMeetMcpServer {
 
         const event = await this.googleMeet.updateCalendarEvent(
           validatedArgs.event_id,
-          updateData
+          updateData,
+          validatedArgs.calendar_id
         );
 
         return {
@@ -913,13 +941,31 @@ class GoogleMeetMcpServer {
         // Validate arguments with Zod schema
         const validatedArgs = validateToolArgs(toolName, args);
 
-        await this.googleMeet.deleteCalendarEvent(validatedArgs.event_id);
+        await this.googleMeet.deleteCalendarEvent(validatedArgs.event_id, validatedArgs.calendar_id);
 
         return {
           content: [
             {
               type: "text",
               text: "Calendar event successfully deleted",
+            },
+          ],
+        };
+      } else if (toolName === "calendar_v3_move_event") {
+        // Validate arguments with Zod schema
+        const validatedArgs = validateToolArgs(toolName, args);
+
+        const movedEvent = await this.googleMeet.moveCalendarEvent(
+          validatedArgs.event_id,
+          validatedArgs.source_calendar_id,
+          validatedArgs.destination_calendar_id
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(movedEvent, null, 2),
             },
           ],
         };

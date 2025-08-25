@@ -270,8 +270,35 @@ function createMcpServer({ config }: { config: z.infer<typeof configSchema> }) {
                 type: "string",
                 description: "ID of the event to delete",
               },
+              calendar_id: {
+                type: "string",
+                description: "ID of the calendar containing the event (defaults to 'primary')",
+                default: "primary",
+              },
             },
             required: ["event_id"],
+          },
+        },
+        {
+          name: "calendar_v3_move_event",
+          description: "[Calendar API v3] Move a calendar event from one calendar to another",
+          inputSchema: {
+            type: "object",
+            properties: {
+              event_id: {
+                type: "string",
+                description: "ID of the event to move",
+              },
+              source_calendar_id: {
+                type: "string",
+                description: "ID of the calendar where the event currently exists",
+              },
+              destination_calendar_id: {
+                type: "string",
+                description: "ID of the calendar to move the event to",
+              },
+            },
+            required: ["event_id", "source_calendar_id", "destination_calendar_id"],
           },
         },
         {
@@ -633,6 +660,8 @@ function createMcpServer({ config }: { config: z.infer<typeof configSchema> }) {
         return await handleUpdateEvent(request.params.arguments);
       case "calendar_v3_delete_event":
         return await handleDeleteEvent(request.params.arguments);
+      case "calendar_v3_move_event":
+        return await handleMoveEvent(request.params.arguments);
       case "calendar_v3_freebusy_query":
         return await handleFreeBusyQuery(request.params.arguments);
       case "calendar_v3_quick_add":
@@ -735,7 +764,7 @@ function createMcpServer({ config }: { config: z.infer<typeof configSchema> }) {
     try {
       console.error("🎯 handleGetEvent args:", JSON.stringify(args, null, 2));
       const api = await initializeAPI();
-      const result = await api.getCalendarEvent(args.event_id);
+      const result = await api.getCalendarEvent(args.event_id, args.calendar_id);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
@@ -768,6 +797,7 @@ function createMcpServer({ config }: { config: z.infer<typeof configSchema> }) {
           canModify: args.guest_can_modify,
           canSeeOtherGuests: args.guest_can_see_other_guests,
         },
+        calendarId: args.calendar_id,
       });
       
       return {
@@ -797,7 +827,7 @@ function createMcpServer({ config }: { config: z.infer<typeof configSchema> }) {
       if (args.end_time !== undefined) updateData.endTime = args.end_time;
       if (args.attendees !== undefined) updateData.attendees = args.attendees;
       
-      const result = await api.updateCalendarEvent(args.event_id, updateData);
+      const result = await api.updateCalendarEvent(args.event_id, updateData, args.calendar_id);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
@@ -816,9 +846,32 @@ function createMcpServer({ config }: { config: z.infer<typeof configSchema> }) {
     try {
       console.error("🎯 handleDeleteEvent args:", JSON.stringify(args, null, 2));
       const api = await initializeAPI();
-      const result = await api.deleteCalendarEvent(args.event_id);
+      const result = await api.deleteCalendarEvent(args.event_id, args.calendar_id);
       return {
         content: [{ type: "text", text: JSON.stringify({ success: result, message: "Event deleted successfully" }, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{ 
+          type: "text", 
+          text: `Error: ${error instanceof Error ? error.message : String(error)}` 
+        }],
+        isError: true,
+      };
+    }
+  }
+
+  async function handleMoveEvent(args: any) {
+    try {
+      console.error("🎯 handleMoveEvent args:", JSON.stringify(args, null, 2));
+      const api = await initializeAPI();
+      const result = await api.moveCalendarEvent(
+        args.event_id,
+        args.source_calendar_id,
+        args.destination_calendar_id
+      );
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
     } catch (error) {
       return {

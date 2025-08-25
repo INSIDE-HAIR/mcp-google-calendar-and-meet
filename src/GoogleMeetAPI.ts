@@ -558,12 +558,13 @@ class GoogleMeetAPI {
   /**
    * Get details of a specific calendar event.
    * @param {string} eventId - ID of the calendar event to retrieve
+   * @param {string} calendarId - Calendar ID (defaults to "primary")
    * @returns {Promise<Object>} - Calendar event details
    */
-  async getCalendarEvent(eventId: string): Promise<ProcessedEvent> {
+  async getCalendarEvent(eventId: string, calendarId: string = "primary"): Promise<ProcessedEvent> {
     try {
       const response = await this.calendar.events.get({
-        calendarId: "primary",
+        calendarId: calendarId,
         eventId: eventId,
       } as any);
 
@@ -828,13 +829,14 @@ class GoogleMeetAPI {
    * Update an existing calendar event.
    * @param {string} eventId - ID of the event to update
    * @param {Object} updateData - Fields to update
+   * @param {string} calendarId - Calendar ID (defaults to "primary")
    * @returns {Promise<Object>} - Updated event details
    */
-  async updateCalendarEvent(eventId: string, updateData: EventUpdateData = {}): Promise<ProcessedEvent> {
+  async updateCalendarEvent(eventId: string, updateData: EventUpdateData = {}, calendarId: string = "primary"): Promise<ProcessedEvent> {
     try {
       // First, get the existing event
       const response = await this.calendar.events.get({
-        calendarId: "primary",
+        calendarId: calendarId,
         eventId: eventId,
       });
 
@@ -885,7 +887,7 @@ class GoogleMeetAPI {
 
       // Make the API call to update the event
       const updateResponse = await (this.calendar as any).events.patch({
-        calendarId: "primary",
+        calendarId: calendarId,
         eventId: eventId,
         conferenceDataVersion: 1,
         resource: event,
@@ -907,18 +909,47 @@ class GoogleMeetAPI {
   /**
    * Delete a calendar event.
    * @param {string} eventId - ID of the event to delete
+   * @param {string} calendarId - Calendar ID (defaults to "primary")
    * @returns {Promise<boolean>} - True if deleted successfully
    */
-  async deleteCalendarEvent(eventId: string): Promise<boolean> {
+  async deleteCalendarEvent(eventId: string, calendarId: string = "primary"): Promise<boolean> {
     try {
       await this.calendar.events.delete({
-        calendarId: "primary",
+        calendarId: calendarId,
         eventId: eventId,
       });
 
       return true;
     } catch (error) {
       throw new Error(`Error deleting calendar event: ${error.message}`);
+    }
+  }
+
+  /**
+   * Move a calendar event from one calendar to another.
+   * @param {string} eventId - ID of the event to move
+   * @param {string} sourceCalendarId - ID of the source calendar (where the event currently is)
+   * @param {string} destinationCalendarId - ID of the destination calendar
+   * @returns {Promise<ProcessedEvent>} - The moved event details
+   */
+  async moveCalendarEvent(eventId: string, sourceCalendarId: string, destinationCalendarId: string): Promise<ProcessedEvent> {
+    try {
+      const response = await this.calendar.events.move({
+        calendarId: sourceCalendarId,
+        eventId: eventId,
+        destination: destinationCalendarId,
+      });
+
+      const movedEvent = response.data;
+      const formattedEvent = this._formatCalendarEvent(movedEvent);
+
+      if (!formattedEvent) {
+        throw new Error(`Failed to format event data for moved event ${eventId}`);
+      }
+
+      return formattedEvent;
+    } catch (error) {
+      throw new Error(`Error moving calendar event: ${error.message}`);
     }
   }
 

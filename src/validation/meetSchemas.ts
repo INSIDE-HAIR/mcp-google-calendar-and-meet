@@ -256,6 +256,19 @@ export const DeleteEventSchema = z.object({
     .describe('Calendar event ID to delete')
 }).describe('Delete calendar event');
 
+// calendar_v3_move_event - Requiere event_id, source_calendar_id, destination_calendar_id
+export const MoveEventSchema = z.object({
+  event_id: z.string()
+    .min(1, 'Event ID is required')
+    .describe('Calendar event ID to move'),
+  source_calendar_id: z.string()
+    .min(1, 'Source calendar ID is required')
+    .describe('ID of the calendar where the event currently exists'),
+  destination_calendar_id: z.string()
+    .min(1, 'Destination calendar ID is required')
+    .describe('ID of the calendar to move the event to')
+}).describe('Move calendar event from one calendar to another');
+
 // ========== MEET API v2 - HERRAMIENTAS RESTANTES ==========
 
 // meet_v2_update_space - Ya existe, pero necesitamos asegurar que esté incluido
@@ -391,6 +404,7 @@ export const ValidationSchemas = {
   'calendar_v3_create_event': CreateEventSchema,
   'calendar_v3_update_event': UpdateEventSchema,
   'calendar_v3_delete_event': DeleteEventSchema,
+  'calendar_v3_move_event': MoveEventSchema,
   
   // Meet API v2 Tools (11 herramientas)
   'meet_v2_create_space': CreateSpaceSchema,
