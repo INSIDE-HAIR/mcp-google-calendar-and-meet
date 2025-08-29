@@ -504,6 +504,64 @@ class GoogleMeetAPI {
   }
 
   /**
+   * Check if a calendar is accessible to the current user
+   * @param {string} calendarId - Calendar ID to check
+   * @returns {Promise<boolean>} - True if accessible, false otherwise
+   */
+  async isCalendarAccessible(calendarId: string): Promise<boolean> {
+    try {
+      // Try to get calendar metadata
+      await this.calendar.calendars.get({ calendarId });
+      return true;
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error(`🔍 Calendar ${calendarId} accessibility check failed:`, error.message);
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Find which calendar contains a specific event
+   * @param {string} eventId - Event ID to search for
+   * @returns {Promise<string|null>} - Calendar ID containing the event, or null if not found
+   */
+  async findEventCalendar(eventId: string): Promise<string | null> {
+    try {
+      // Get list of all accessible calendars
+      const calendars = await this.listCalendars();
+      
+      // Try to find the event in each calendar
+      for (const calendar of calendars) {
+        try {
+          await this.calendar.events.get({
+            calendarId: calendar.id,
+            eventId: eventId,
+          });
+          // If we get here without error, we found the calendar
+          if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+            console.error(`🔍 Found event ${eventId} in calendar: ${calendar.id} (${calendar.summary})`);
+          }
+          return calendar.id;
+        } catch (error) {
+          // Event not in this calendar, continue searching
+          continue;
+        }
+      }
+      
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error(`🔍 Event ${eventId} not found in any accessible calendar`);
+      }
+      return null;
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error(`🔍 Error searching for event ${eventId}:`, error.message);
+      }
+      return null;
+    }
+  }
+
+  /**
    * List upcoming calendar events (including those with Google Meet).
    * @param {number} maxResults - Maximum number of results to return
    * @param {string} timeMin - Start time in ISO format
@@ -517,6 +575,19 @@ class GoogleMeetAPI {
     timeMax: string | null = null,
     calendarId = "primary"
   ): Promise<ProcessedEvent[]> {
+    // Verify calendar client is initialized
+    if (!this.calendar) {
+      throw new Error("Calendar API not initialized. Please ensure authentication is completed.");
+    }
+    
+    // For non-primary calendars, check accessibility first
+    if (calendarId !== "primary") {
+      const accessible = await this.isCalendarAccessible(calendarId);
+      if (!accessible) {
+        throw new Error(`Calendar "${calendarId}" is not accessible. Please verify the calendar ID and your permissions.`);
+      }
+    }
+    
     // Default timeMin to now if not provided
     if (!timeMin) {
       timeMin = new Date().toISOString();
@@ -536,6 +607,12 @@ class GoogleMeetAPI {
       params.timeMax = timeMax;
     }
 
+    if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+      console.error("🔍 listCalendarEvents params:", JSON.stringify(params, null, 2));
+      console.error("🔍 Calendar client available:", !!this.calendar);
+      console.error("🔍 Auth client available:", !!this.auth);
+    }
+
     try {
       const response = await this.calendar.events.list(params);
       const events = response.data.items || [];
@@ -551,7 +628,30 @@ class GoogleMeetAPI {
 
       return formattedEvents;
     } catch (error) {
-      throw new Error(`Error listing meetings: ${error.message}`);
+      // Enhanced error handling for calendar access issues
+      if (error.code === 404) {
+        throw new Error(`Calendar not found: The calendar with ID "${calendarId}" does not exist or you don't have access to it. Please check the calendar ID and your permissions.`);
+      }
+      
+      if (error.code === 403) {
+        throw new Error(`Access denied: You don't have sufficient permissions to access calendar "${calendarId}". Required permission: reader access or higher.`);
+      }
+      
+      if (error.code === 401) {
+        throw new Error(`Authentication failed: Your credentials are invalid or expired. Please re-authenticate.`);
+      }
+      
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error("🔍 Full error details:", {
+          code: error.code,
+          message: error.message,
+          status: error.status,
+          calendarId: calendarId,
+          params: params
+        });
+      }
+      
+      throw new Error(`Error listing meetings: ${error.message} (Code: ${error.code || 'unknown'})`);
     }
   }
 
@@ -561,7 +661,19 @@ class GoogleMeetAPI {
    * @param {string} calendarId - Calendar ID (defaults to "primary")
    * @returns {Promise<Object>} - Calendar event details
    */
-  async getCalendarEvent(eventId: string, calendarId: string = "primary"): Promise<ProcessedEvent> {
+  async getCalendarEvent(eventId: string, calendarId?: string): Promise<ProcessedEvent> {
+    // If no calendar ID is provided, try to find the event in available calendars
+    if (!calendarId) {
+      console.error("🔍 No calendar_id provided, searching for event in all calendars...");
+      const foundCalendarId = await this.findEventCalendar(eventId);
+      if (foundCalendarId) {
+        calendarId = foundCalendarId;
+        console.error(`🔍 Found event in calendar: ${calendarId}`);
+      } else {
+        calendarId = "primary"; // Fallback to primary
+        console.error("🔍 Event not found in any calendar, defaulting to primary");
+      }
+    }
     try {
       const response = await this.calendar.events.get({
         calendarId: calendarId,
@@ -832,15 +944,93 @@ class GoogleMeetAPI {
    * @param {string} calendarId - Calendar ID (defaults to "primary")
    * @returns {Promise<Object>} - Updated event details
    */
-  async updateCalendarEvent(eventId: string, updateData: EventUpdateData = {}, calendarId: string = "primary"): Promise<ProcessedEvent> {
+  async updateCalendarEvent(eventId: string, updateData: EventUpdateData = {}, calendarId?: string): Promise<ProcessedEvent> {
+    // Check if this is a recurring event instance
+    const isRecurringInstance = eventId.includes('_') && /\d{8}T\d{6}Z$/.test(eventId);
+    
+    if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+      console.error("🔍 updateCalendarEvent called with:", {
+        eventId,
+        calendarId: calendarId || "undefined",
+        isRecurringInstance,
+        updateDataKeys: Object.keys(updateData),
+        calendarInitialized: !!this.calendar
+      });
+    }
+    
+    // Verify calendar client is initialized
+    if (!this.calendar) {
+      throw new Error("Calendar API not initialized. Please ensure authentication is completed.");
+    }
+    
+    // If no calendar ID is provided, try to find the event in available calendars
+    if (!calendarId) {
+      console.error("🔍 No calendar_id provided, searching for event in all calendars...");
+      const foundCalendarId = await this.findEventCalendar(eventId);
+      if (foundCalendarId) {
+        calendarId = foundCalendarId;
+        console.error(`🔍 Found event in calendar: ${calendarId}`);
+      } else {
+        calendarId = "primary"; // Fallback to primary
+        console.error("🔍 Event not found in any calendar, defaulting to primary");
+      }
+    }
+    
     try {
       // First, get the existing event
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error("🔍 Getting existing event with params:", { calendarId, eventId });
+      }
+      
       const response = await this.calendar.events.get({
         calendarId: calendarId,
         eventId: eventId,
       });
+      
+      // Log event details for debugging recurring event permissions
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        const event = response.data;
+        console.error("🔍 Event details:", {
+          id: event.id,
+          summary: event.summary,
+          status: event.status,
+          creator: event.creator?.email,
+          organizer: event.organizer?.email,
+          isRecurring: !!event.recurringEventId,
+          recurringEventId: event.recurringEventId,
+          originalStartTime: event.originalStartTime,
+          guestsCanModify: event.guestsCanModify,
+          locked: event.locked,
+          eventType: event.eventType
+        });
+      }
 
       const event = response.data;
+
+      // Check for event restrictions before attempting update
+      if (event.locked) {
+        throw new Error(`Cannot update event: This event is locked and cannot be modified.`);
+      }
+      
+      if (isRecurringInstance && event.guestsCanModify === false) {
+        console.error("⚠️ Warning: Event has guestsCanModify=false, update may fail for non-organizers");
+      }
+      
+      // For recurring instances, check if we have organizer permissions
+      if (isRecurringInstance) {
+        const currentUserEmail = process.env.CLIENT_ID?.split('@')[0]; // Approximate user identification
+        const isOrganizer = event.organizer?.email === currentUserEmail;
+        const isCreator = event.creator?.email === currentUserEmail;
+        
+        if (!isOrganizer && !isCreator) {
+          console.error("⚠️ Warning: You are not the organizer/creator of this recurring event. Update may fail.");
+        }
+        
+        // For recurring instances, consider updating the master event instead
+        if (event.recurringEventId && Object.keys(updateData).length === 1 && updateData.summary) {
+          console.error("🔄 Info: This is a recurring event instance. For title changes, consider updating the master event:", event.recurringEventId);
+        }
+      }
 
       // Update the fields that were provided
       if (updateData.summary !== undefined) {
@@ -886,12 +1076,36 @@ class GoogleMeetAPI {
       }
 
       // Make the API call to update the event
-      const updateResponse = await (this.calendar as any).events.patch({
+      // Using update (PUT) instead of patch because we're sending the complete event object
+      // after fetching it first (GET + UPDATE pattern recommended by Google)
+      const updateParams: any = {
         calendarId: calendarId,
         eventId: eventId,
         conferenceDataVersion: 1,
-        resource: event,
-      });
+        requestBody: event,
+      };
+      
+      // Add sendUpdates parameter to control notifications
+      // - 'all': Send notifications to all guests
+      // - 'externalOnly': Send notifications only to external guests (not same domain)
+      // - 'none': Don't send notifications
+      updateParams.sendUpdates = updateData.sendUpdates || 'none';
+      
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error("🔍 Update params:", {
+          calendarId,
+          eventId,
+          isRecurringInstance,
+          sendUpdates: updateParams.sendUpdates,
+          hasConferenceData: !!event.conferenceData,
+          recurringEventInfo: isRecurringInstance ? {
+            baseEventId: eventId.split('_')[0],
+            instanceDate: eventId.split('_')[1]
+          } : null
+        });
+      }
+      
+      const updateResponse = await this.calendar.events.update(updateParams);
 
       const updatedEvent = updateResponse.data;
       const formattedEvent = this._formatCalendarEvent(updatedEvent);
@@ -902,7 +1116,42 @@ class GoogleMeetAPI {
 
       return formattedEvent;
     } catch (error) {
-      throw new Error(`Error updating calendar event: ${error.message}`);
+      // Enhanced error handling for recurring events and permissions
+      if (error.code === 403) {
+        let errorMessage = `Access denied: `;
+        if (isRecurringInstance) {
+          errorMessage += `Cannot modify recurring event instance "${eventId}". This may be due to:
+          - Insufficient permissions to modify recurring events
+          - The event is managed by another user or organization
+          - Recurring event restrictions (some fields may be immutable)
+          - The event may be locked or have special restrictions`;
+        } else {
+          errorMessage += `You don't have sufficient permissions to modify this event. Check your calendar permissions.`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      if (error.code === 404) {
+        throw new Error(`Event not found: The event "${eventId}" does not exist in the specified calendar.`);
+      }
+      
+      if (error.code === 401) {
+        throw new Error(`Authentication failed: Your credentials are invalid or expired.`);
+      }
+      
+      if (process.env.NODE_ENV === 'development' || process.env.MCP_DEBUG === 'true') {
+        console.error("🔍 Full update error details:", {
+          code: error.code,
+          message: error.message,
+          status: error.status,
+          eventId,
+          calendarId,
+          isRecurringInstance,
+          updateDataKeys: Object.keys(updateData)
+        });
+      }
+      
+      throw new Error(`Error updating calendar event: ${error.message} (Code: ${error.code || 'unknown'})`);
     }
   }
 
@@ -912,7 +1161,19 @@ class GoogleMeetAPI {
    * @param {string} calendarId - Calendar ID (defaults to "primary")
    * @returns {Promise<boolean>} - True if deleted successfully
    */
-  async deleteCalendarEvent(eventId: string, calendarId: string = "primary"): Promise<boolean> {
+  async deleteCalendarEvent(eventId: string, calendarId?: string): Promise<boolean> {
+    // If no calendar ID is provided, try to find the event in available calendars
+    if (!calendarId) {
+      console.error("🔍 No calendar_id provided, searching for event in all calendars...");
+      const foundCalendarId = await this.findEventCalendar(eventId);
+      if (foundCalendarId) {
+        calendarId = foundCalendarId;
+        console.error(`🔍 Found event in calendar: ${calendarId}`);
+      } else {
+        calendarId = "primary"; // Fallback to primary
+        console.error("🔍 Event not found in any calendar, defaulting to primary");
+      }
+    }
     try {
       await this.calendar.events.delete({
         calendarId: calendarId,
@@ -1000,11 +1261,12 @@ class GoogleMeetAPI {
       }
 
       // Make the API call to update the event
-      const updateResponse = await (this.calendar as any).events.patch({
+      // Using update (PUT) instead of patch because we're sending the complete event object
+      const updateResponse = await this.calendar.events.update({
         calendarId: "primary",
         eventId: meetingId,
         conferenceDataVersion: 1,
-        resource: event,
+        requestBody: event,
       });
 
       const updatedEvent = updateResponse.data;

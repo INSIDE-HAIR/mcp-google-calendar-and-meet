@@ -744,12 +744,29 @@ function createMcpServer({ config }: { config: z.infer<typeof configSchema> }) {
   async function handleListEvents(args: any) {
     try {
       console.error("🎯 handleListEvents args:", JSON.stringify(args, null, 2));
+      console.error("🔍 Environment check:", {
+        CLIENT_ID: process.env.CLIENT_ID ? "SET" : "NOT SET",
+        CLIENT_SECRET: process.env.CLIENT_SECRET ? "SET" : "NOT SET", 
+        REFRESH_TOKEN: process.env.REFRESH_TOKEN ? "SET" : "NOT SET",
+        G_OAUTH_CREDENTIALS: process.env.G_OAUTH_CREDENTIALS ? "SET" : "NOT SET"
+      });
+      
       const api = await initializeAPI();
+      console.error("🔑 API initialized, calling listCalendarEvents with:", {
+        max_results: args.max_results,
+        time_min: args.time_min,
+        time_max: args.time_max,
+        calendar_id: args.calendar_id
+      });
+      
       const result = await api.listCalendarEvents(args.max_results, args.time_min, args.time_max, args.calendar_id);
+      console.error("✅ listCalendarEvents completed successfully, events found:", result.length);
+      
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
     } catch (error) {
+      console.error("❌ handleListEvents error:", error);
       return {
         content: [{ 
           type: "text", 
@@ -817,6 +834,13 @@ function createMcpServer({ config }: { config: z.infer<typeof configSchema> }) {
   async function handleUpdateEvent(args: any) {
     try {
       console.error("🎯 handleUpdateEvent args:", JSON.stringify(args, null, 2));
+      console.error("🔍 Environment check:", {
+        CLIENT_ID: process.env.CLIENT_ID ? "SET" : "NOT SET",
+        CLIENT_SECRET: process.env.CLIENT_SECRET ? "SET" : "NOT SET", 
+        REFRESH_TOKEN: process.env.REFRESH_TOKEN ? "SET" : "NOT SET",
+        G_OAUTH_CREDENTIALS: process.env.G_OAUTH_CREDENTIALS ? "SET" : "NOT SET"
+      });
+      
       const api = await initializeAPI();
       
       const updateData: any = {};
@@ -826,6 +850,12 @@ function createMcpServer({ config }: { config: z.infer<typeof configSchema> }) {
       if (args.start_time !== undefined) updateData.startTime = args.start_time;
       if (args.end_time !== undefined) updateData.endTime = args.end_time;
       if (args.attendees !== undefined) updateData.attendees = args.attendees;
+      
+      console.error("🔍 Calling updateCalendarEvent with:", {
+        event_id: args.event_id,
+        calendar_id: args.calendar_id || "primary",
+        updateData: updateData
+      });
       
       const result = await api.updateCalendarEvent(args.event_id, updateData, args.calendar_id);
       return {

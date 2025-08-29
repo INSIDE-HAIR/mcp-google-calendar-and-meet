@@ -199,6 +199,7 @@ export interface EventUpdateData {
   guestCanInviteOthers?: boolean;
   guestCanModify?: boolean;
   guestCanSeeOtherGuests?: boolean;
+  sendUpdates?: 'all' | 'externalOnly' | 'none';
 }
 
 export interface SpaceUpdateData {
